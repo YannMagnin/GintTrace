@@ -6,6 +6,9 @@ const char *disasm_dictionary_check_peripheral(void *address)
 {
 	extern const struct regname sh7305_peripherals[];
 
+	if (address == NULL)
+		return (NULL);
+
 	for (int i = 0 ; sh7305_peripherals[i].name != NULL ;++i) {
 		if (sh7305_peripherals[i].address == (uintptr_t)address)
 			return (sh7305_peripherals[i].name);

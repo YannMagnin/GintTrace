@@ -1,5 +1,6 @@
 #include "gintrace/gui/menu.h"
 #include "gintrace/menu/disasm.h"
+#include "gintrace/menu/context.h"
 #include "gintrace/ubc.h"
 
 #include <gint/gint.h>
@@ -26,11 +27,9 @@ int main(void)
 	/* initialize all internal menu and get the "first" menu to display */
 	menu_create(&gmenu);
 	menu_register(gmenu, &menu_disasm, "Disasm");
-	menu_register(gmenu, NULL, "Context");
+	menu_register(gmenu, &menu_context, "Context");
 	menu_register(gmenu, NULL, "Hexdump");
-	menu_register(gmenu, NULL, "TLB");
 	menu_register(gmenu, NULL, "CallG");
-	menu_register(gmenu, NULL, "BBBBB");
 
 	/* intialize UBC information */
 	ubc_install();

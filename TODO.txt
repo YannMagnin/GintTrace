@@ -1,0 +1,12 @@
+@update
+* window size management (move to GUI part)
+* disasm circular buffer (code only)
+* common EXE to continue
+* call uninit() to each menu (disasm = set the next break point) !
+* fix fixed size space character
+
+@feature
+* night mode
+* hex dump
+* call graph
+* call graph export for laptop

@@ -10,6 +10,9 @@ const char *disasm_dictionary_check_syscalls(void *address)
 	const char *sysname;
 	uint32_t *systab;
 
+	if (address == NULL)
+		return (NULL);
+
 	/* @note:
 	 * Casio doesn't use the TRAPA instruction (software interruption), for
 	 * switch from user mode to privileged mode. They just jump always at
