@@ -4,17 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* define font information */
-/* TODO: move me !*/
-#ifdef FXCG50
-#define FWIDTH	9
-#define FHEIGHT	10
-#endif
-#ifdef FX9860G
-#define FWIDTH	5
-#define FHEIGHT	7
-#endif
-
+/* mcontext: menu context internal structure */
 struct mcontext {
 	struct {
 		int hoffset;

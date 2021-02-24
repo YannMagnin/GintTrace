@@ -1,6 +1,7 @@
 #include "gintrace/menu/context.h"
 #include "gintrace/ubc.h"
 #include "gintrace/gui/menu.h"
+#include "gintrace/gui/display.h"
 
 #include <gint/std/stdio.h>
 #include <gint/keyboard.h>

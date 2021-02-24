@@ -10,21 +10,6 @@
 #include <gint/defs/types.h>
 #include <gint/display.h>
 
-/* define font information */
-#ifdef FXCG50
-#define FWIDTH	9
-#define FHEIGHT	10
-#endif
-#ifdef FX9860G
-#define FWIDTH	5
-#define FHEIGHT	7
-#endif
-
-/* define display information */
-#define DISASM_NB_COLUMN	(DWIDTH / (FWIDTH + 1))
-#define DISASM_NB_ROW		(DHEIGHT / (FHEIGHT + 1))
-
-
 /* buffcursor: buffer cursor (line + note) */
 struct buffcursor {
 	int line_idx;

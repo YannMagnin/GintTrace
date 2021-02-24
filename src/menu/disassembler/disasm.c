@@ -1,5 +1,7 @@
 #include "gintrace/menu/disasm.h"
 #include "gintrace/ubc.h"
+#include "gintrace/gui/menu.h"
+#include "gintrace/gui/display.h"
 
 #include "./src/menu/disassembler/dictionary.h"
 
@@ -194,7 +196,7 @@ static int disasm_util_note_counter(int line_idx)
 static int disasm_util_row_update(int *row, int direction)
 {
 	*row = *row + direction;
-	return(*row < 0 || *row >= DISASM_NB_ROW);
+	return(*row < 0 || *row >= GUI_DISP_NB_ROW);
 }
 
 /* disasm_util_line_fetch(): Generate all information for the given line.
@@ -297,8 +299,8 @@ int disasm_display_addr_info(int *row, struct buffcursor *cursor,
 static void disasm_ctor(void)
 {
 	memset(&tracer, 0x00, sizeof(struct tracer));
-	tracer.buffer.size.width  = DISASM_NB_COLUMN * 2;
-	tracer.buffer.size.height = DISASM_NB_ROW * 2 + 2;
+	tracer.buffer.size.width  = GUI_DISP_NB_COLUMN * 2;
+	tracer.buffer.size.height = GUI_DISP_NB_ROW * 2 + 2;
 	tracer.buffer.raw = calloc(sizeof(void*), tracer.buffer.size.height);
 	for (size_t i = 0; i < tracer.buffer.size.height; ++i) {
 		tracer.buffer.raw[i] = calloc(sizeof(char*), 5);
@@ -361,7 +363,7 @@ static void disasm_display(struct ucontext *context)
 
 	/* display the first part (current middle line and before, upward) */
 	pc = 0;
-	row = DISASM_NB_ROW / 2;
+	row = GUI_DISP_NB_ROW / 2;
 	cursor.line_idx = tracer.buffer.cursor.line_idx;
 	cursor.note_idx = tracer.buffer.cursor.note_idx;
 	disasm_display_addr_info(&row, &cursor, context, -1, pc);
@@ -380,7 +382,7 @@ static void disasm_display(struct ucontext *context)
 	 *   displayed and skipped. So, we need to update the line, fetch
 	 *   information, get the note index max then start displaying lines. */
 	pc = 0;
-	row = (DISASM_NB_ROW / 2) + 1;
+	row = (GUI_DISP_NB_ROW / 2) + 1;
 	cursor.line_idx = tracer.buffer.cursor.line_idx;
 	cursor.note_idx = tracer.buffer.cursor.note_idx - 1;
 	if (cursor.note_idx < 0) {
@@ -390,7 +392,7 @@ static void disasm_display(struct ucontext *context)
 					&tracer.buffer.anchor.addr[pc], 1);
 		cursor.note_idx = disasm_util_note_counter(cursor.line_idx);
 	}
-	while (row <= DISASM_NB_ROW) {
+	while (row <= GUI_DISP_NB_ROW) {
 		disasm_display_addr_info(&row, &cursor, context, 1, pc);
 		pc = pc + 1;
 		cursor.line_idx = disasm_util_line_update(cursor.line_idx, 1);
