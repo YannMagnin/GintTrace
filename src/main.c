@@ -35,7 +35,8 @@ int main(void)
 	/* intialize UBC information */
 	ubc_install();
 	ubc_set_handler(&gintrace_handler);
-	ubc_set_breakpoint(0, (void*)0x80358a6c, NULL);
+	//ubc_set_breakpoint(0, (void*)0x80358a6c, NULL);
+	ubc_set_breakpoint(0, (void*)0x80358a7e, NULL);
 
 	/* try to trace the function */
 	gint_switch((void *)0x80358a6c);

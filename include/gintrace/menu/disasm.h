@@ -12,8 +12,8 @@
 
 /* define font information */
 #ifdef FXCG50
-#define FWIDTH	8
-#define FHEIGHT	9
+#define FWIDTH	9
+#define FHEIGHT	10
 #endif
 #ifdef FX9860G
 #define FWIDTH	5
@@ -23,6 +23,13 @@
 /* define display information */
 #define DISASM_NB_COLUMN	(DWIDTH / (FWIDTH + 1))
 #define DISASM_NB_ROW		(DHEIGHT / (FHEIGHT + 1))
+
+
+/* buffcursor: buffer cursor (line + note) */
+struct buffcursor {
+	int line_idx;
+	int note_idx;
+};
 
 /* tracer: internal information used to display disassembly view */
 struct tracer {
@@ -38,8 +45,11 @@ struct tracer {
 			size_t width;
 			size_t height;
 		} size;
-		off_t cursor;
-		uint16_t *anchor;
+		struct {
+			off_t line_idx;
+			uint16_t *addr;
+		} anchor;
+		struct buffcursor cursor;
 	} buffer;
 
 	/* display offset */
