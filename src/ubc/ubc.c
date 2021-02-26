@@ -94,3 +94,37 @@ int ubc_set_handler(void (*handler)(struct ucontext *ctxt))
 	ubc_handler = handler;
 	return (0);
 }
+
+
+static uint32_t __ubc_block_counter = 0;
+static uint32_t __ubc_cbcr_ubde = 0;
+static uint32_t __ubc_cbr0_ce = 0;
+
+/* ubc_block(): Block UBC interruption */
+int ubc_block(void)
+{
+	if (__ubc_block_counter == 0) {
+		__ubc_cbr0_ce = SH7305_UBC.CBR0.CE;
+		__ubc_cbcr_ubde = SH7305_UBC.CBCR.UBDE;
+		SH7305_UBC.CBCR.UBDE = 0;
+		SH7305_UBC.CBR0.CE = 0;
+		ubc_kernel_update();
+	}
+	__ubc_block_counter += 1;
+	return (0);
+}
+
+
+/* ubc_block(): Block UBC interruption */
+int ubc_unblock(void)
+{
+	if (__ubc_block_counter <= 0)
+		return (-1);
+	__ubc_block_counter -= 1;
+	if (__ubc_block_counter == 0) {
+		SH7305_UBC.CBCR.UBDE = __ubc_cbcr_ubde;
+		SH7305_UBC.CBR0.CE = __ubc_cbr0_ce;
+		ubc_kernel_update();
+	}
+	return (0);
+}

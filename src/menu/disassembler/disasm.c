@@ -259,7 +259,7 @@ int disasm_display_addr_info(int *row, struct buffcursor *cursor,
 		/* check note */
 		if (cursor->note_idx != 0) {
 			drect(0, (*row) * (FHEIGHT + 1) - 1, DWIDTH,
-				((*row) * (FHEIGHT + 1) - 1) + (FHEIGHT + 2),
+				((*row) * (FHEIGHT + 1) - 1) + (FHEIGHT + 1),
 				0x556655);
 			dtext(tracer.disp.hoffset * (FWIDTH + 1),
 					(*row) * (FHEIGHT + 1), C_WHITE, ptr);
@@ -409,6 +409,7 @@ static int disasm_keyboard(struct ucontext *context, int key)
 	int line_idx;
 
 	/* horizontal update */
+	(void)context;
 	if (key == KEY_LEFT)
 		tracer.disp.hoffset += 1;
 	if (key == KEY_RIGHT)
@@ -452,14 +453,9 @@ static int disasm_keyboard(struct ucontext *context, int key)
 	/* skip instruction */
 	if (key == KEY_OPTN) {
 		context->spc = tracer.next_break;
-		ubc_set_breakpoint(0, (void*)tracer.next_break, NULL);
 		return (1);
 	}
-	/* go to net break point */
-	if (key == KEY_EXE) {
-		ubc_set_breakpoint(0, (void*)tracer.next_break, NULL);
-		return (1);
-	}
+
 	return(0);
 }
 

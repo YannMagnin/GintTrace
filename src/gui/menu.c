@@ -142,7 +142,7 @@ int menu_keyboard(struct menu_group *gmenu)
 	if (gmenu == NULL)
 		return (menu_retval_efault);
 	key = getkey().key;
-	if (key == KEY_EXIT) {
+	if (key == KEY_EXE) {
 		gmenu->is_open = 1;
 		return (menu_retval_success);
 	}

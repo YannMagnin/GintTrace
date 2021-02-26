@@ -1,10 +1,11 @@
 @update
 * common EXE to continue
 * call uninit() to each menu (disasm = set the next break point) !
-* fix fixed size space character
+* fix fixed size 'space' character
 * disasm circular buffer (code only)
 
 @feature
-* night mode
-* call graph
 * call graph export for laptop
+* input box
+* command management for each menu
+* night mode

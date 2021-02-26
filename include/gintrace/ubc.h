@@ -127,13 +127,13 @@ struct sh7305_ubc_context {
 //---
 /* ucontext: UBC context */
 struct ucontext {
-	uint32_t reg[16];
-	uint32_t gbr;
-	uint32_t macl;
-	uint32_t mach;
-	uint32_t ssr;
-	uint32_t spc;
-	uint32_t pr;
+	uintptr_t reg[16];
+	uintptr_t gbr;
+	uintptr_t macl;
+	uintptr_t mach;
+	uintptr_t ssr;
+	uintptr_t spc;
+	uintptr_t pr;
 };
 
 //---
@@ -149,6 +149,10 @@ extern int ubc_set_handler(void (*handler)(struct ucontext *ctx));
 /* ubc_set_breakpoint(): Setup one breakpoint */
 extern int ubc_set_breakpoint(int channel, void *address, void *mask);
 
+/* ubc_block(): Block UBC interruption */
+extern int ubc_block(void);
+/* ubc_unblock(): Unblock UBC interruption */
+extern int ubc_unblock(void);
 
 //---
 //	"low-level" interface
