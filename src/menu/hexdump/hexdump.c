@@ -2,8 +2,10 @@
 #include "gintrace/ubc.h"
 #include "gintrace/gui/menu.h"
 #include "gintrace/gui/display.h"
+#include "gintrace/gui/input.h"
 
 #include <gint/std/stdio.h>
+#include <gint/std/string.h>
 #include <gint/keyboard.h>
 #include <gint/display.h>
 
@@ -72,6 +74,41 @@ static int hexdump_keyboard(struct ucontext *context, int key)
 	return (0);
 }
 
+/* hexdump_command(): Handle user command */
+static void hexdump_command(struct ucontext *context, int argc, char **argv)
+{
+	uintptr_t address;
+	int i;
+
+	(void)context;
+	if (argc != 2)
+		return;
+	if (strcmp(argv[0], "jmp") != 0) {
+		input_write("unknown '%s' command", argv[0]);
+		return;
+	}
+	i = -1;
+	address = 0x00000000;
+	while (++i < 8 && argv[1][i] != '\0') {
+		address = address << 4;
+		if (argv[1][i] >= '0' && argv[1][i] <= '9') {
+			address = address + argv[1][i] - '0';
+			continue;
+		}
+		if (argv[1][i] >= 'a' && argv[1][i] <= 'f') {
+			address = address + argv[1][i] - 'a' + 10;
+			continue;
+		}
+		if (argv[1][i] >= 'A' && argv[1][i] <= 'F') {
+			address = address + argv[1][i] - 'A' + 10;
+			continue;
+		}
+		input_write("'%s': second argument error", argv[0]);
+		return;
+	}
+	hexdump.addr = (void*)(address & ~3);
+}
+
 //---
 // Define the menu
 //---
@@ -80,6 +117,6 @@ struct menu menu_hexdump = {
 	.init     = NULL,
 	.display  = &hexdump_display,
 	.keyboard = &hexdump_keyboard,
-	.command  = NULL,
+	.command  = &hexdump_command,
 	.dtor     = NULL
 };

@@ -2,6 +2,7 @@
 #include "gintrace/ubc.h"
 #include "gintrace/gui/menu.h"
 #include "gintrace/gui/display.h"
+#include "gintrace/gui/input.h"
 
 #include "./src/menu/disassembler/dictionary.h"
 
@@ -459,7 +460,67 @@ static int disasm_keyboard(struct ucontext *context, int key)
 	return(0);
 }
 
+/* disasm_command(): Handle user command */
+static void disasm_command(struct ucontext *context, int argc, char **argv)
+{
+	uintptr_t address;
+	uint8_t action;
+	int i;
 
+	if (argc != 2)
+		return;
+
+	action  = 0;
+	action |= (strcmp(argv[0], "jmp") == 0) << 0;
+	action |= (strcmp(argv[0], "syscall") == 0) << 1;
+	if (action == 0) {
+		input_write("unknown '%s' command", argv[0]);
+		return;
+	}
+	i = -1;
+	address = 0x00000000;
+	while (++i < 8 && argv[1][i] != '\0') {
+		address = address << 4;
+		if (argv[1][i] >= '0' && argv[1][i] <= '9') {
+			address = address + argv[1][i] - '0';
+			continue;
+		}
+		if (argv[1][i] >= 'a' && argv[1][i] <= 'f') {
+			address = address + argv[1][i] - 'a' + 10;
+			continue;
+		}
+		if (argv[1][i] >= 'A' && argv[1][i] <= 'F') {
+			address = address + argv[1][i] - 'A' + 10;
+			continue;
+		}
+		goto error_part;
+	}
+	if (i >= 8)
+		goto error_part;
+
+	if ((action & 1) == 1) {
+		tracer.spc = address & ~3;
+		tracer.buffer.cursor.note_idx = 0;
+		tracer.buffer.cursor.line_idx = 0;
+		i = disasm_util_line_update(tracer.buffer.cursor.line_idx, -1);
+		tracer.buffer.raw[i][0][0] = '\0';
+		tracer.buffer.raw[tracer.buffer.cursor.line_idx][0][0] = '\0';
+		disasm_util_line_fetch(tracer.buffer.cursor.line_idx,
+						&tracer.buffer.anchor.addr[0], 1);
+		disasm_display(context);
+		input_write("addr updated to %p", address);
+		return;
+	}
+	if (address >= 0x1fff)
+		goto error_part;
+	uintptr_t *systab = *(uintptr_t **)0x8002007c;
+	input_write("syscall %x: %p", address, systab[address]);
+	return;
+
+	/* error part */
+error_part:
+	input_write("'%s': second argument error", argv[0]);
+}
 
 //---
 // Define the menu
@@ -469,6 +530,6 @@ struct menu menu_disasm = {
 	.init     = &disasm_init,
 	.display  = &disasm_display,
 	.keyboard = &disasm_keyboard,
-	.command  = NULL,
+	.command  = &disasm_command,
 	.dtor     = &disasm_dtor
 };

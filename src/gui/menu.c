@@ -3,6 +3,8 @@
 //---
 #include "gintrace/gui/menu.h"
 #include "gintrace/gui/fkey.h"
+#include "gintrace/gui/input.h"
+#include "gintrace/lexer.h"
 
 #include <gint/std/string.h>
 #include <gint/std/stdlib.h>
@@ -146,6 +148,22 @@ int menu_keyboard(struct menu_group *gmenu)
 		gmenu->is_open = 1;
 		return (menu_retval_success);
 	}
+	if (key == KEY_SQUARE) {
+		if (gmenu->selected == NULL
+				|| gmenu->selected->command == NULL) {
+			goto check_fkeys;
+		}
+		char buf[256];
+		if (input_read(buf, 256) <= 0)
+			goto check_fkeys;
+		int ac;
+		char **av;
+		if (lexer_strtotab(&ac, &av, buf) == 0) {
+			gmenu->selected->command((void*)gmenu->arg, ac, av);
+			lexer_strtotab_quit(&ac, &av);
+		}
+	}
+check_fkeys:
 	for (int i = 0; i < 6; ++i) {
 		if (keylist[i] != key)
 			continue;
