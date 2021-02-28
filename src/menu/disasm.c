@@ -77,7 +77,8 @@ static int disasm_util_line_update(int line_idx, int direction)
  * - address  Address to check
  * - type     Type of check:
  *              type & 1 -> check hardware module register
- *              type & 2 -> check syscall address */
+ *              type & 2 -> check syscall address
+ *              type & 4 -> check OS-specific address */
 static void disasm_check_special_addr(char *buffer, void *address, int type)
 {
 	extern struct tracer tracer;
@@ -85,9 +86,11 @@ static void disasm_check_special_addr(char *buffer, void *address, int type)
 
 	addrname = NULL;
 	if ((type & 1) != 0)
-		addrname = disasm_dictionary_check_peripheral(address);
+		addrname = dictionary_peripherals_check(address);
 	if (addrname == NULL && (type & 2) != 0)
-		addrname = disasm_dictionary_check_syscalls(address);
+		addrname = dictionary_syscalls_check(address);
+	if (addrname == NULL && (type & 4) != 0)
+		addrname = dictionary_notes_check(address);
 	if (addrname == NULL)
 		return;
 	snprintf(buffer, tracer.buffer.size.width,
@@ -124,7 +127,7 @@ static void disasm_get_mnemonic_info(int line, uint16_t *pc)
 
 	/* check special address (register, syscall, ...) */
 	note = 1;
-	disasm_check_special_addr(tracer.buffer.raw[line][note], pc, 2);
+	disasm_check_special_addr(tracer.buffer.raw[line][note], pc, 6);
 	if (tracer.buffer.raw[line][note][0] != '\0')
 		note += 1;
 
@@ -135,7 +138,7 @@ static void disasm_get_mnemonic_info(int line, uint16_t *pc)
 
 	/* Try to get the current opcode */
 	opcode = pc[0];
-	opcode_info = disasm_dictionary_check_opcode(opcode);
+	opcode_info = dictionary_opcodes_check(opcode);
 	if (opcode_info == NULL) {
 		snprintf(&tracer.buffer.raw[line][0][14],
 				tracer.buffer.size.width - 14,
@@ -145,12 +148,11 @@ static void disasm_get_mnemonic_info(int line, uint16_t *pc)
 
 	/* get mnemonic arguments, if available */
 	for (int i = 0 ; i < 3 ; ++i) {
-		arg[i] = disasm_dictionary_opcode_get_arg(opcode_info,
-								opcode, i, pc);
+		arg[i] = dictionary_opcodes_get_arg(opcode_info, opcode, i, pc);
 		if (arg[i] == 0x00000000)
 			continue;
 		disasm_check_special_addr(tracer.buffer.raw[line][note++],
-				(void*)arg[i], 3);
+				(void*)arg[i], 7);
 	}
 
 	/* generate the complete mnemonic information */
@@ -466,11 +468,12 @@ static void disasm_command(struct ucontext *context, int argc, char **argv)
 {
 	uintptr_t address;
 	uint8_t action;
+	int idx;
 	int i;
 
-	if (argc != 2)
+	/* argument check */
+	if (argc == 0)
 		return;
-
 	action  = 0;
 	action |= (strcmp(argv[0], "jmp") == 0) << 0;
 	action |= (strcmp(argv[0], "syscall") == 0) << 1;
@@ -478,20 +481,36 @@ static void disasm_command(struct ucontext *context, int argc, char **argv)
 		input_write("unknown '%s' command", argv[0]);
 		return;
 	}
+	if (argc < 2) {
+		input_write("'%s': argument missing", argv[0]);
+		return;
+	}
+	idx = 1;
+	if ((action & 2) != 0 && argc != 2) {
+		if (argv[1][0] != '-'
+				|| argv[1][0] == 'j'
+				|| argv[1][0] == '\0') {
+			input_write("'syscall': arg '%s' unknown", argv[1]);
+			return;
+		}
+		idx = 2;
+	}
+
+	/* handle arguments */
 	i = -1;
 	address = 0x00000000;
-	while (++i < 8 && argv[1][i] != '\0') {
+	while (++i < 8 && argv[idx][i] != '\0') {
 		address = address << 4;
-		if (argv[1][i] >= '0' && argv[1][i] <= '9') {
-			address = address + argv[1][i] - '0';
+		if (argv[idx][i] >= '0' && argv[idx][i] <= '9') {
+			address = address + argv[idx][i] - '0';
 			continue;
 		}
-		if (argv[1][i] >= 'a' && argv[1][i] <= 'f') {
-			address = address + argv[1][i] - 'a' + 10;
+		if (argv[idx][i] >= 'a' && argv[idx][i] <= 'f') {
+			address = address + argv[idx][i] - 'a' + 10;
 			continue;
 		}
-		if (argv[1][i] >= 'A' && argv[1][i] <= 'F') {
-			address = address + argv[1][i] - 'A' + 10;
+		if (argv[idx][i] >= 'A' && argv[idx][i] <= 'F') {
+			address = address + argv[idx][i] - 'A' + 10;
 			continue;
 		}
 		goto error_part;
@@ -499,28 +518,36 @@ static void disasm_command(struct ucontext *context, int argc, char **argv)
 	if (i > 8)
 		goto error_part;
 
-	if ((action & 1) == 1) {
-		tracer.buffer.anchor.addr = (void*)(address & ~1);
-		tracer.buffer.cursor.note_idx = 0;
-		tracer.buffer.cursor.line_idx = 0;
-		i = disasm_util_line_update(tracer.buffer.cursor.line_idx, -1);
-		tracer.buffer.raw[i][0][0] = '\0';
-		tracer.buffer.raw[tracer.buffer.cursor.line_idx][0][0] = '\0';
-		disasm_util_line_fetch(tracer.buffer.cursor.line_idx,
-						&tracer.buffer.anchor.addr[0], 1);
-		disasm_display(context);
-		input_write("addr updated to %p", address);
-		return;
+	/* action */
+	if ((action & 2) != 0) {
+		if (address >= 0x1fff)
+			goto error_part;
+#ifdef FXCG50
+		uintptr_t *systab = *(uintptr_t **)0x8002007c;
+#endif
+#ifdef FX9860
+		uintptr_t *systab = *(uintptr_t **)0x8001007c;
+#endif
+		if (idx == 2) {
+			input_write("syscall %x: %p", address, systab[address]);
+			return;
+		}
+		address = systab[address];
 	}
-	if (address >= 0x1fff)
-		goto error_part;
-	uintptr_t *systab = *(uintptr_t **)0x8002007c;
-	input_write("syscall %x: %p", address, systab[address]);
+	tracer.buffer.anchor.addr = (void*)(address & ~1);
+	tracer.buffer.cursor.note_idx = 0;
+	tracer.buffer.cursor.line_idx = 0;
+	i = disasm_util_line_update(tracer.buffer.cursor.line_idx, -1);
+	tracer.buffer.raw[i][0][0] = '\0';
+	tracer.buffer.raw[tracer.buffer.cursor.line_idx][0][0] = '\0';
+	disasm_util_line_fetch(tracer.buffer.cursor.line_idx,
+					&tracer.buffer.anchor.addr[0], 1);
+	disasm_display(context);
 	return;
 
 	/* error part */
 error_part:
-	input_write("'%s': second argument error", argv[0]);
+	input_write("'%s': '%s': argument error", argv[0], argv[idx]);
 }
 
 //---

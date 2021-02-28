@@ -44,7 +44,8 @@ void input_display(void)
 	int y;
 
 	/* add cursor mark */
-	input_info.buffer.data[input_info.buffer.cursor] |= 0x80;
+	if (input_info.cursor.visible == 1)
+		input_info.buffer.data[input_info.buffer.cursor] |= 0x80;
 
 	/* display part */
 	cursor_x = 0;
@@ -78,7 +79,8 @@ void input_display(void)
 	dupdate();
 
 	/* remove cursor mark */
-	input_info.buffer.data[input_info.buffer.cursor] &= ~0x80;
+	if (input_info.cursor.visible == 1)
+		input_info.buffer.data[input_info.buffer.cursor] &= ~0x80;
 }
 
 //---
@@ -239,6 +241,7 @@ int input_read(char *buffer, size_t size)
 	memcpy(secondary, main, 2*396*224);
 
 	/* keyboard handling */
+	input_info.cursor.visible = 1;
 	while (input_info.mode.exit == 0) {
 		input_display();
 		key = getkey_opt(GETKEY_REP_ALL | GETKEY_MENU, NULL);
@@ -286,6 +289,7 @@ int input_write(const char *format, ...)
 	memcpy(secondary, main, 2*396*224);
 
 	/* display and wait user event */
+	input_info.cursor.visible = 0;
 	input_display();
 	getkey();
 	return (0);

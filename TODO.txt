@@ -1,11 +1,10 @@
-@update
+@fix
 * fix fixed size 'space' character
-* disasm circular buffer (code only)
-* move <src/menu/disassembler/dictionary> to <src/menu/common>
 * fix tabulation
 
+@update
 
 @feature
-* display internal note (OS specific)
 * call graph export for laptop
 * night mode (refacto gui and handle color template)
+* transform gintracer into a librairy

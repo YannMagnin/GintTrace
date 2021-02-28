@@ -1,5 +1,5 @@
-#ifndef _SRC_MENU_DISASSEMBLER_DICTIONARY_H__
-# define _SRC_MENU_DISASSEMBLER_DICTIONARY_H__
+#ifndef __DICTIONARY_H__
+# define __DICTIONARY_H__
 
 #include <stddef.h>
 #include <stdint.h>
@@ -49,6 +49,12 @@
 #define OPCODE_ACTION_DISP_LONG			0b0100
 #define OPCODE_ACTION_DISP_WORD			0b0101
 
+/* osnote: OS-specific information */
+struct osnote {
+	uintptr_t address;
+	const char *name;
+};
+
 /* opcode - internal instruction data part. */
 struct opcode {
 	const char *name;
@@ -76,17 +82,22 @@ struct regname {
 // Functions
 //---
 
-/* disasm_dictionary_check_syscall(): Check if the address is a syscall. */
-extern const char *disasm_dictionary_check_syscalls(void *address);
+/* dictionary_notes_check(): Check if the address is a syscall. */
+extern const char *dictionary_notes_check(void *address);
 
-/* disasm_dictionaru_check_peripheral(): Check preipheral address */
-extern const char *disasm_dictionary_check_peripheral(void *address);
+/* dictionary_syscalls_check(): Check if the address is a syscall. */
+extern const char *dictionary_syscalls_check(void *address);
+
+/* dictionaru_peripherals_check(): Check preipheral address */
+extern const char *dictionary_peripherals_check(void *address);
 
 
-/* disasm_dictionnary_opcode_get_arg(); return arguments of a given opcode */
-extern uint32_t disasm_dictionary_opcode_get_arg(const struct opcode *info,
+/* disasm_dictionnary_opcodes_get_arg(); return arguments of a given opcode */
+extern uint32_t dictionary_opcodes_get_arg(const struct opcode *info,
 					uint16_t opcode, int argID, void *pc);
 
 /* disasm_dictionnary_check_opcode(): Try to find opcode information */
-extern const struct opcode *disasm_dictionary_check_opcode(uint16_t opcode);
-#endif /*_SRC_MENU_DISASSEMBLER_DICTIONARY_H__*/
+extern const struct opcode *dictionary_opcodes_check(uint16_t opcode);
+
+
+#endif /*__DICTIONARY_H__*/

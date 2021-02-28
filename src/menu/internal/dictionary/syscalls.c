@@ -2,8 +2,8 @@
 
 #include <gint/std/stdio.h>
 
-/* disasm_dictionary_check_syscall(): Check if the address is a syscall. */
-const char *disasm_dictionary_check_syscalls(void *address)
+/* dictionary_syscalls_check(): Check if the address is a syscall. */
+const char *dictionary_syscalls_check(void *address)
 {
 	extern const struct sysname casio_syscalls[];
 	static char syscallinfo[64];

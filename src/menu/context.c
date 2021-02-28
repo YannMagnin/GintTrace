@@ -26,17 +26,26 @@ static void printXY(int column, int row, const char *text, uintptr_t reg)
 
 	a = 0;
 	idx = snprintf(bf, 128, text, reg);
-	addrname = disasm_dictionary_check_peripheral((void*)reg);
+	addrname = dictionary_peripherals_check((void*)reg);
 	if (addrname != NULL) {
 		idx = snprintf(&bf[idx], 128 - idx, " - %s", addrname);
 		a = 1;
 	}
-	addrname = disasm_dictionary_check_syscalls((void*)reg);
+	addrname = dictionary_syscalls_check((void*)reg);
 	if (addrname != NULL) {
 		if (a == 0)
 			idx = snprintf(&bf[idx], 128 - idx, " - %s", addrname);
 		else
 			idx = snprintf(&bf[idx], 128 - idx, ", %s", addrname);
+		a = 1;
+	}
+	addrname = dictionary_notes_check((void*)reg);
+	if (addrname != NULL) {
+		if (a == 0)
+			idx = snprintf(&bf[idx], 128 - idx, " - %s", addrname);
+		else
+			idx = snprintf(&bf[idx], 128 - idx, ", %s", addrname);
+		a = 1;
 	}
 	dtext(column * (FWIDTH + 1), row * (FHEIGHT + 1), C_BLACK, bf);
 }

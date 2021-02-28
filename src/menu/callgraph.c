@@ -112,8 +112,9 @@ static void callnode_display(struct callnode *node, uint32_t bitmap[4],
 	}
 
 
-	const char *addrname =
-		disasm_dictionary_check_syscalls((void*)node->address);
+	const char *addrname = dictionary_syscalls_check((void*)node->address);
+	if (addrname == NULL)
+		addrname = dictionary_notes_check((void*)node->address);
 	if (addrname == NULL) {
 		snprintf(line, 256, "%s %p", type, (void*)node->address);
 	} else {

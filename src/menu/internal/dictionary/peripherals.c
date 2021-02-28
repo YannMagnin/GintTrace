@@ -1,8 +1,8 @@
 #include "./src/menu/internal/dictionary.h"
 #include <gint/std/stdio.h>
 
-/* disasm_dictionaru_check_peripheral(): Check preipheral address */
-const char *disasm_dictionary_check_peripheral(void *address)
+/* dictionary_peripherals_check(): Check preipheral address */
+const char *dictionary_peripherals_check(void *address)
 {
 	extern const struct regname sh7305_peripherals[];
 

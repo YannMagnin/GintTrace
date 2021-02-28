@@ -35,8 +35,8 @@ static uint32_t (*actions[6])(uint32_t,int32_t) = {
 //---
 // Public function
 //---
-/* disasm_dictionnary_opcode_get_arg(); return arguments of a given opcode */
-uint32_t disasm_dictionary_opcode_get_arg(const struct opcode *info,
+/* dictionary_opcodes_get_arg(); return arguments of a given opcode */
+uint32_t dictionary_opcodes_get_arg(const struct opcode *info,
 					uint16_t opcode, int argID, void *pc)
 {
 	uint32_t argument;
@@ -84,8 +84,8 @@ uint32_t disasm_dictionary_opcode_get_arg(const struct opcode *info,
 	return (actions[action]((uintptr_t)pc + 4, argument));
 }
 
-/* disasm_dictionnary_check_opcode(): Try to find opcode information */
-const struct opcode *disasm_dictionary_check_opcode(uint16_t opcode)
+/* dictionnary_opcodes_check(): Try to find opcode information */
+const struct opcode *dictionary_opcodes_check(uint16_t opcode)
 {
 	extern const struct opcode opcode_list[];
 
