@@ -7,8 +7,7 @@
 #include <gint/keyboard.h>
 #include <gint/display.h>
 
-/* bad architectur */
-#include "./src/menu/disassembler/dictionary.h"
+#include "./src/menu/internal/dictionary.h"
 
 /* define the menu information */
 /* TODO: find a way to have local information (session) */

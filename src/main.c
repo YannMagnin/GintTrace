@@ -64,10 +64,14 @@ static void gintrace_handler(struct ucontext *context)
 /* casio_handler(): Casio handler */
 static void casio_handler(void)
 {
+#if 0
 	void (*bfile_openfile_os)(const uint16_t *filename, int mode, int p3);
 
 	bfile_openfile_os = syscall;
 	bfile_openfile_os(u"\\fls0\\dyntest", BFile_ReadOnly, 0);
+#endif
+	void (*debug_menu_filesystem)(void) = syscall;
+	debug_menu_filesystem();
 }
 
 /* main(): User entry */
@@ -82,17 +86,15 @@ int main(void)
 
 	/* get syscall address */
 	void **systab = *(void ***)0x8002007c;
-	syscall = systab[0x1da3];
+	syscall = systab[0x1e48];
 
 
 	/* intialize UBC information */
 	ubc_install();
 	ubc_set_handler(&gintrace_handler);
-	//ubc_set_breakpoint(0, (void*)0x80358a6c, NULL);
 	ubc_set_breakpoint(0, syscall, NULL);
 
 	/* try to trace the function */
-	//gint_switch((void *)0x80358a6c);	// stack menu (syscall %1e66)
 	gint_switch((void*)&casio_handler);
 
 	//TODO : destructor part !!

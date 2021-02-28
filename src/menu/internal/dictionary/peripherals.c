@@ -1,4 +1,4 @@
-#include "./src/menu/disassembler/dictionary.h"
+#include "./src/menu/internal/dictionary.h"
 #include <gint/std/stdio.h>
 
 /* disasm_dictionaru_check_peripheral(): Check preipheral address */

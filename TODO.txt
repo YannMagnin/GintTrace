@@ -1,9 +1,11 @@
 @update
-* call uninit() to each menu (disasm = set the next break point) !
 * fix fixed size 'space' character
 * disasm circular buffer (code only)
 * move <src/menu/disassembler/dictionary> to <src/menu/common>
+* fix tabulation
+
 
 @feature
+* display internal note (OS specific)
 * call graph export for laptop
 * night mode (refacto gui and handle color template)

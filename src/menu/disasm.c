@@ -4,7 +4,7 @@
 #include "gintrace/gui/display.h"
 #include "gintrace/gui/input.h"
 
-#include "./src/menu/disassembler/dictionary.h"
+#include "./src/menu/internal/dictionary.h"
 
 #include <gint/std/string.h>
 #include <gint/std/stdlib.h>
@@ -344,7 +344,6 @@ static void disasm_init(struct ucontext *context)
 	tracer.buffer.anchor.addr = (void*)(uintptr_t)((context->spc + 1) & ~1);
 	tracer.next_break = context->spc;
 	tracer.next_instruction = context->spc;
-	tracer.spc = context->spc;
 
 	tracer.buffer.cursor.note_idx = 0;
 	tracer.buffer.cursor.line_idx = 0;
@@ -450,6 +449,8 @@ static int disasm_keyboard(struct ucontext *context, int key)
 		tracer.next_break += 2;
 	if (key == KEY_MINUS)
 		tracer.next_break -= 2;
+	if (key == KEY_NEG)
+		tracer.next_break = (uintptr_t)tracer.buffer.anchor.addr;
 
 	/* skip instruction */
 	if (key == KEY_OPTN) {
@@ -495,11 +496,11 @@ static void disasm_command(struct ucontext *context, int argc, char **argv)
 		}
 		goto error_part;
 	}
-	if (i >= 8)
+	if (i > 8)
 		goto error_part;
 
 	if ((action & 1) == 1) {
-		tracer.spc = address & ~3;
+		tracer.buffer.anchor.addr = (void*)(address & ~1);
 		tracer.buffer.cursor.note_idx = 0;
 		tracer.buffer.cursor.line_idx = 0;
 		i = disasm_util_line_update(tracer.buffer.cursor.line_idx, -1);

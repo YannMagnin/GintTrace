@@ -1,4 +1,4 @@
-#include "./src/menu/disassembler/dictionary.h"
+#include "./src/menu/internal/dictionary.h"
 
 #include <gint/std/stdio.h>
 
@@ -615,6 +615,12 @@ const struct sysname casio_syscalls[] = {
 	//
 	// Yatis
 	//
+	{.syscall = 0x0ea6, .name = "void Debug_menu_TestMode(void);"},
+	{.syscall = 0x0ea7, .name = "void Debug_menu_TestMode(int unknown);"},
+	{.syscall = 0x1e44, .name = "void Debug_menu_FileSystem(void);"},
+	{.syscall = 0x1e45, .name = "void Debug_menu_Fugue_OpenFileInfo(void);"},
+	{.syscall = 0x1e48, .name = "void Debug_menu_Fugue_VolumeInfo(void);"},
+	{.syscall = 0x1e49, .name = "void Debug_menu_Fugue_LogInfo(void);"},
 	{.syscall = 0x1e66, .name = "void Debug_menu_stackAndHeap(void);"},
 
 	//

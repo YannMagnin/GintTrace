@@ -28,9 +28,6 @@ struct {
 		off_t cursor;
 		char *data;
 	} buffer;
-	struct {
-		int id;
-	} timer;
 } input_info;
 
 //---
@@ -46,13 +43,8 @@ void input_display(void)
 	int x;
 	int y;
 
-	/* stop the timer too avoid interrupt-loop */
-	if (input_info.timer.id >= 0)
-		timer_pause(input_info.timer.id);
-
-	/* mark special characte that the cursor is here */
-	if (input_info.cursor.visible == 1)
-		input_info.buffer.data[input_info.buffer.cursor] |= 0x80;
+	/* add cursor mark */
+	input_info.buffer.data[input_info.buffer.cursor] |= 0x80;
 
 	/* display part */
 	cursor_x = 0;
@@ -85,23 +77,8 @@ void input_display(void)
 	}
 	dupdate();
 
-
 	/* remove cursor mark */
 	input_info.buffer.data[input_info.buffer.cursor] &= ~0x80;
-
-	/* restart the timer */
-	if (input_info.timer.id >= 0)
-		timer_start(input_info.timer.id);
-}
-
-//---
-// Cursor management
-//---
-/* input_cursor_handler(): Involved at 0.5hz, blink the cursor */
-int input_cursor_handler(void) {
-	input_info.cursor.visible ^= 1;
-	input_display();
-	return (0);
 }
 
 //---
@@ -114,10 +91,6 @@ static void input_buffer_remove(void)
 	if (input_info.buffer.cursor == 0)
 		return;
 
-	/* stop the timer to avoid interrupt */
-	if (input_info.timer.id >= 0)
-		timer_pause(input_info.timer.id);
-
 	/* move data if needed */
 	if (input_info.buffer.cursor < input_info.buffer.size - 1) {
 		memcpy(
@@ -129,10 +102,6 @@ static void input_buffer_remove(void)
 	/* force NULL-char and update cursor/size */
 	input_info.buffer.cursor = input_info.buffer.cursor - 1;
 	input_info.buffer.data[--input_info.buffer.size - 1] = '\0';
-
-	/* restart the timer */
-	if (input_info.timer.id >= 0)
-		timer_start(input_info.timer.id);
 }
 
 /* input_buffer_insert() - Insert character based on current cursor position */
@@ -141,10 +110,6 @@ static int input_buffer_insert(char n)
 	/* save space for the "\n\0" (EOL) */
 	if (input_info.buffer.size + 1 >= input_info.buffer.max)
 		return (-1);
-
-	/* stop the timer to avoid interrupt */
-	if (input_info.timer.id >= 0)
-		timer_pause(input_info.timer.id);
 
 	/* move data if needed */
 	if (input_info.buffer.cursor < input_info.buffer.size - 1) {
@@ -157,10 +122,6 @@ static int input_buffer_insert(char n)
 	/* insert the character and force NULL-char */
 	input_info.buffer.data[input_info.buffer.cursor++] = n;
 	input_info.buffer.data[++input_info.buffer.size] = '\0';
-
-	/* restart the timer */
-	if (input_info.timer.id >= 0)
-		timer_start(input_info.timer.id);
 	return (0);
 }
 
@@ -268,12 +229,6 @@ int input_read(char *buffer, size_t size)
 	input_info.buffer.size = 1;
 	input_info.buffer.max = size;
 
-	/* start cursor blink timer */
-	input_info.timer.id = timer_setup(TIMER_ANY, 250000,
-					(void*)&input_cursor_handler);
-	if (input_info.timer.id >= 0)
-		timer_start(input_info.timer.id);
-
 	/* Gint workaround to freeze the current display */
 	dgetvram(&main, &secondary);
 	if (gint_vram == main) {
@@ -285,6 +240,7 @@ int input_read(char *buffer, size_t size)
 
 	/* keyboard handling */
 	while (input_info.mode.exit == 0) {
+		input_display();
 		key = getkey_opt(GETKEY_REP_ALL | GETKEY_MENU, NULL);
 		spe = input_key_handle_special(key);
 		if (spe < 0) {
@@ -293,12 +249,7 @@ int input_read(char *buffer, size_t size)
 		}
 		if (spe == 0)
 			input_key_buffer_update(key);
-		input_display();
 	}
-
-	/* stop the timer */
-	if (input_info.timer.id >= 0)
-		timer_stop(input_info.timer.id);
 	return (input_info.buffer.size);
 }
 

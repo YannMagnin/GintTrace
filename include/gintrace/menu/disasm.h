@@ -47,7 +47,6 @@ struct tracer {
 	uint16_t *memory;
 	uintptr_t next_break;
 	uintptr_t next_instruction;
-	uintptr_t spc;
 };
 
 /* extern menu information */

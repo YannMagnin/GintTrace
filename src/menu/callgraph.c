@@ -9,7 +9,7 @@
 #include <gint/keyboard.h>
 #include <gint/display.h>
 
-#include "./src/menu/disassembler/dictionary.h"
+#include "./src/menu/internal/dictionary.h"
 
 /* define the menu information */
 /* TODO: find a way to have local information (session) */
@@ -58,13 +58,6 @@ static void callnode_display(struct callnode *node, uint32_t bitmap[4],
 
 	if (node == NULL || *row + callgraph.cursor.voffset >= GUI_DISP_NB_ROW)
 		return;
-	if (*row + callgraph.cursor.voffset < 0) {
-		*row = *row + 1;
-		callnode_display(node->child, bitmap, row, depth + 1);
-		callnode_display(node->sibling, bitmap, row, depth);
-		return;
-	}
-
 	/* handle the bitmap (ugly / 20) */
 	i = -1;
 	idx = 0;
@@ -73,7 +66,8 @@ static void callnode_display(struct callnode *node, uint32_t bitmap[4],
 		if (idx >= 4)
 			break;
 		shift = i & 0x1f;
-		if ((bitmap[idx] & (1 << shift)) != 0) {
+		if ((bitmap[idx] & (1 << shift)) != 0
+				&& *row + callgraph.cursor.voffset >= 0) {
 			dtext((2 + callgraph.cursor.hoffset + (i << 2))
 				* (FWIDTH + 1), (*row
 				+ callgraph.cursor.voffset)
@@ -108,6 +102,16 @@ static void callnode_display(struct callnode *node, uint32_t bitmap[4],
 		type = "(rts)";
 		pipe = '`';
 	}
+
+	/* skip display part */
+	if (*row + callgraph.cursor.voffset < 0) {
+		*row = *row + 1;
+		callnode_display(node->child, bitmap, row, depth + 1);
+		callnode_display(node->sibling, bitmap, row, depth);
+		return;
+	}
+
+
 	const char *addrname =
 		disasm_dictionary_check_syscalls((void*)node->address);
 	if (addrname == NULL) {
