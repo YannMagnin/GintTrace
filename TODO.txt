@@ -1,10 +1,13 @@
 @fix
 * fix fixed size 'space' character
 * fix tabulation
+* fix destructor
+* fix fx9860 support
 
 @update
+* hexdump: search commands
 
 @feature
-* call graph export for laptop
 * night mode (refacto gui and handle color template)
 * transform gintracer into a librairy
+* handle session (send the session instead of ucontext !)

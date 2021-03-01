@@ -30,7 +30,6 @@ struct callgraph {
 	} cursor;
 	struct callnode *root;
 	struct callnode *parent;
-	int callnode_counter;
 };
 
 /* extern menu information */

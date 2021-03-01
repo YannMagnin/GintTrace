@@ -13,14 +13,16 @@
 /* internal structure used to store many information */
 struct {
 	struct {
-		int visible;
-	} cursor;
+		uint8_t cursor	:1;	/* display cursor */
+		uint8_t meta	:1;	/* display meta info */
+		uint8_t const	:6;
+	} config;
 	struct {
-		uint8_t alpha:	1;
-		uint8_t shift:	1;
-		uint8_t ctrl:	1;
-		uint8_t exit:	1;
-		uint8_t const:	4;
+		uint8_t alpha	:1;
+		uint8_t shift	:1;
+		uint8_t ctrl	:1;
+		uint8_t exit	:1;
+		uint8_t const	:4;
 	} mode;
 	struct {
 		size_t max;
@@ -28,41 +30,35 @@ struct {
 		off_t cursor;
 		char *data;
 	} buffer;
+	struct {
+		size_t size;
+		char data[256];
+	} prefix;
 } input_info;
 
 //---
 // Display management
 //---
-/* input_display(): Display the input area */
-void input_display(void)
+/* input_print(): Print line */
+static void input_print(int *cursor_x, int *cursor_y, const char *str)
 {
-	int cursor_x;
-	int cursor_y;
 	uint16_t tmp;
 	int cursor;
+	char c;
 	int x;
 	int y;
 
-	/* add cursor mark */
-	if (input_info.cursor.visible == 1)
-		input_info.buffer.data[input_info.buffer.cursor] |= 0x80;
-
-	/* display part */
-	cursor_x = 0;
-	cursor_y = GUI_DISP_NB_ROW - 1;
-	cursor_y -= input_info.buffer.size / GUI_DISP_NB_COLUMN;
-	drect(0, cursor_y * (FHEIGHT + 1) - 1, DWIDTH, DHEIGHT, C_WHITE);
-	dhline(cursor_y * (FHEIGHT + 1) - 3, C_BLACK);
-	dhline(cursor_y * (FHEIGHT + 1) - 2, C_BLACK);
-	for (size_t i = 0; i < input_info.buffer.size; ++i) {
+	if (str == NULL)
+		return;
+	for (size_t i = 0; str[i] != '\0'; ++i) {
 		/* get the cursor and remove the potential cursor marker */
-		cursor = ((input_info.buffer.data[i] & 0x80) != 0);
-		input_info.buffer.data[i] &= 0x7f;
+		cursor = ((str[i] & 0x80) != 0);
+		c = str[i] & 0x7f;
 
 		/* display part (character + cursor if needed) */
-		x = cursor_x * (FWIDTH  + 1);
-		y = cursor_y * (FHEIGHT + 1);
-		tmp = input_info.buffer.data[i] << 8;
+		x = (*cursor_x) * (FWIDTH  + 1);
+		y = (*cursor_y) * (FHEIGHT + 1);
+		tmp = c << 8;
 		dtext(x, y, C_BLACK, (void*)&tmp);
 		if (cursor != 0) {
 			dline(x, y + (FHEIGHT + 1), x + (FWIDTH  + 1) - 2,
@@ -70,16 +66,53 @@ void input_display(void)
 		}
 
 		/* update cursor if needed */
-		cursor_x += 1;
-		if (cursor_x >= GUI_DISP_NB_COLUMN) {
-			cursor_x  = 0;
-			cursor_y += 1;
+		*cursor_x += 1;
+		if (*cursor_x >= GUI_DISP_NB_COLUMN) {
+			*cursor_x  = 0;
+			*cursor_y += 1;
 		}
 	}
+}
+
+/* input_display(): Display the input area */
+static void input_display(void)
+{
+	int cursor_x;
+	int cursor_y;
+	size_t bytes;
+
+	/* add cursor mark */
+	if (input_info.config.cursor == 1)
+		input_info.buffer.data[input_info.buffer.cursor] |= 0x80;
+
+	/* calculate the number of bytes to display */
+	/* TODO: remove me, check line discipline */
+	bytes = input_info.buffer.size + input_info.prefix.size;
+	if (input_info.config.meta == 1)
+		bytes += 4;
+
+	/* calculate the X/Y position */
+	cursor_x = 0;
+	cursor_y = (GUI_DISP_NB_ROW - 1) - (bytes / GUI_DISP_NB_COLUMN);
+
+	/* display information */
+	drect(0, cursor_y * (FHEIGHT + 1) - 1, DWIDTH, DHEIGHT, C_WHITE);
+	dhline(cursor_y * (FHEIGHT + 1) - 3, C_BLACK);
+	dhline(cursor_y * (FHEIGHT + 1) - 2, C_BLACK);
+	if (input_info.config.meta == 1) {
+		char meta[] = "[l]:";
+		if (input_info.mode.alpha == 1)
+			meta[1] = 'L';
+		if (input_info.mode.shift == 1)
+			meta[1] = 'n';
+		input_print(&cursor_x, &cursor_y, meta);
+	}
+	input_print(&cursor_x, &cursor_y, input_info.prefix.data);
+	input_print(&cursor_x, &cursor_y, input_info.buffer.data);
 	dupdate();
 
 	/* remove cursor mark */
-	if (input_info.cursor.visible == 1)
+	if (input_info.config.cursor == 1)
 		input_info.buffer.data[input_info.buffer.cursor] &= ~0x80;
 }
 
@@ -210,7 +243,7 @@ static int input_key_buffer_update(key_event_t key_event)
 }
 
 /* input_read(): Handle user input */
-int input_read(char *buffer, size_t size)
+int input_read(char *buffer, size_t size, const char *prefix, ...)
 {
 	key_event_t key;
 	uint16_t *secondary;
@@ -226,10 +259,17 @@ int input_read(char *buffer, size_t size)
 	memset(&input_info, 0x00, sizeof(input_info));
 	memset(buffer, 0x00, size);
 
-	/* save terminal information */
+	/* setup internal information  */
 	input_info.buffer.data = buffer;
 	input_info.buffer.size = 1;
 	input_info.buffer.max = size;
+	if (prefix != NULL) {
+		va_list _args;
+		va_start(_args, prefix);
+		input_info.prefix.size = vsnprintf(input_info.prefix.data,
+							32, prefix, _args);
+		va_end(_args);
+	}
 
 	/* Gint workaround to freeze the current display */
 	dgetvram(&main, &secondary);
@@ -240,8 +280,10 @@ int input_read(char *buffer, size_t size)
 	}
 	memcpy(secondary, main, 2*396*224);
 
+
 	/* keyboard handling */
-	input_info.cursor.visible = 1;
+	input_info.config.cursor = 1;
+	input_info.config.meta = 1;
 	while (input_info.mode.exit == 0) {
 		input_display();
 		key = getkey_opt(GETKEY_REP_ALL | GETKEY_MENU, NULL);
@@ -289,8 +331,46 @@ int input_write(const char *format, ...)
 	memcpy(secondary, main, 2*396*224);
 
 	/* display and wait user event */
-	input_info.cursor.visible = 0;
+	input_info.config.cursor = 0;
+	input_info.config.meta = 0;
 	input_display();
 	getkey();
+	return (0);
+}
+/* TODO: merge with input_write*/
+int input_write_noint(const char *format, ...)
+{
+	char buffer[512];
+	va_list _args;
+	uint16_t *secondary;
+	uint16_t *main;
+	size_t size;
+	void *tmp;
+
+	va_start(_args, format);
+	size = vsnprintf(buffer, 512, format, _args);
+	va_end(_args);
+
+	/* initialize internal data */
+	memset(&input_info, 0x00, sizeof(input_info));
+
+	/* save terminal information */
+	input_info.buffer.data = buffer;
+	input_info.buffer.size = size;
+	input_info.buffer.max = 512;
+
+	/* Gint workaround to freeze the current display */
+	dgetvram(&main, &secondary);
+	if (gint_vram == main) {
+		tmp = main;
+		main = secondary;
+		secondary = tmp;
+	}
+	memcpy(secondary, main, 2*396*224);
+
+	/* display and wait user event */
+	input_info.config.cursor = 0;
+	input_info.config.meta = 0;
+	input_display();
 	return (0);
 }

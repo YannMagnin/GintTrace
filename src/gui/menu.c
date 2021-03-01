@@ -154,7 +154,7 @@ int menu_keyboard(struct menu_group *gmenu)
 			goto check_fkeys;
 		}
 		char buf[256];
-		if (input_read(buf, 256) <= 0)
+		if (input_read(buf, 256, NULL) <= 0)
 			goto check_fkeys;
 		int ac;
 		char **av;
