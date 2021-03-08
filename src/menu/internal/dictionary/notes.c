@@ -61,7 +61,13 @@ const char *dictionary_notes_check(void *address)
 // Notes
 //---
 struct osnote osnote_table_03502202[] = {
+	{.address = 0x801815a6, .name = "uint32_t atomic_start(void)"},
+
 	{.address = 0x802de518, .name = "int fugue_strlen_secure(const char *str)"},
 	{.address = 0x8037a31c, .name = "int fugue_strlen(const char *str)"},
+	{.address = 0x8017233e, .name = "int fugue_dump_volume_info(const char *volume_name, void *buffer)"},
+	{.address = 0x8014f808, .name = "int fugue_open(struct bpb *bios, uint8_t *pathname, int mode)"},
+	{.address = 0x8014f2ac, .name = "int fugue_dump_info(strcuct casio_fs *fs, void *buffer)"},
+	{.address = 0x8015443e, .name = "int fugue_check_file_validity(strcuct bpb *bios, void *file, void *previous)"},
 	{.address = 0x00000000, .name = NULL},
 };

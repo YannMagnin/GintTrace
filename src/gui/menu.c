@@ -4,12 +4,12 @@
 #include "gintrace/gui/menu.h"
 #include "gintrace/gui/fkey.h"
 #include "gintrace/gui/input.h"
+#include "gintrace/gui/display.h"
 #include "gintrace/lexer.h"
 
 #include <gint/std/string.h>
 #include <gint/std/stdlib.h>
 #include <gint/keyboard.h>
-#include <gint/display.h>
 
 /* menu_create(): Create a group of menus */
 int menu_create(struct menu_group **gmenu)
@@ -106,7 +106,7 @@ int menu_draw(struct menu_group *gmenu)
 
 	if (gmenu == NULL)
 		return (menu_retval_efault);
-	dclear(C_WHITE);
+	gclear();
 	if (gmenu->selected != NULL && gmenu->selected->display != NULL)
 		gmenu->selected->display((void*)gmenu->arg);
 	counter = 0;
@@ -128,7 +128,7 @@ int menu_draw(struct menu_group *gmenu)
 	}
 	if (gmenu->menu_counter >= 7)
 		fkey_action(6, ">");
-	dupdate();
+	gupdate();
 	return (menu_retval_success);
 }
 
@@ -144,6 +144,10 @@ int menu_keyboard(struct menu_group *gmenu)
 	if (gmenu == NULL)
 		return (menu_retval_efault);
 	key = getkey().key;
+	if (key == KEY_0) {
+		gcolor_scheme_change();
+		return (menu_retval_success);
+	}
 	if (key == KEY_EXE) {
 		gmenu->is_open = 1;
 		return (menu_retval_success);

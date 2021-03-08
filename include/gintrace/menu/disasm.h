@@ -47,6 +47,7 @@ struct tracer {
 	uint16_t *memory;
 	uintptr_t next_break;
 	uintptr_t next_instruction;
+	int skip;
 };
 
 /* extern menu information */

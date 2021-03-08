@@ -16,26 +16,6 @@
 /* TODO: find a way to have local information (session) */
 struct tracer tracer;
 
-//---
-// Internal disassembler processing
-//---
-/* dhreverse(): Reverse pixels color on a horizontal area (TODO: move me !!) */
-static void dhreverse(int ypos, size_t size)
-{
-#ifdef FXCG50
-	/* FIXME: border !!! */
-	uint32_t *long_vram;
-	int y1;
-	int y2;
-
-	y1 = ypos;
-	y2 = ypos + size;
-	long_vram = (void *)gint_vram;
-	for(int i = 198 * y1; i < 198 * y2; i++)
-		long_vram[i] = ~long_vram[i];
-#endif
-}
-
 
 /* disasm_util_line_update(): Little helper to update the line index
  * @nte:
@@ -261,27 +241,21 @@ int disasm_display_addr_info(int *row, struct buffcursor *cursor,
 
 		/* check note */
 		if (cursor->note_idx != 0) {
-			drect(0, (*row) * (FHEIGHT + 1) - 1, DWIDTH,
-				((*row) * (FHEIGHT + 1) - 1) + (FHEIGHT + 1),
-				0x556655);
-			dtext(tracer.disp.hoffset * (FWIDTH + 1),
-					(*row) * (FHEIGHT + 1), C_WHITE, ptr);
+			gnoteXY(tracer.disp.hoffset, *row, ptr);
 		} else {
 			/* check instruction */
-			dtext(tracer.disp.hoffset * (FWIDTH + 1),
-					(*row) * (FHEIGHT + 1), C_BLACK, ptr);
+			gtextXY(tracer.disp.hoffset, *row, ptr);
 
 			/* highlight SPC if possible */
 			ptr = &tracer.buffer.anchor.addr[pc];
 			if ((uintptr_t)ptr == context->spc)
-				dhreverse((*row) * (FHEIGHT + 1) - 1,
-								FHEIGHT + 2);
+				ghreverse((*row) * (FHEIGHT+1) - 1, FHEIGHT+2);
+
 			/* draw next break / instruction */
 			if (tracer.next_break != context->spc
 					&& ptr == (void*)tracer.next_break) {
-				dhline((*row) * (FHEIGHT + 1) - 1, C_BLACK);
-				dhline( ((*row) + 1) * (FHEIGHT + 1) - 1,
-								C_BLACK);
+				ghline(((*row) + 0) * (FHEIGHT + 1) - 1);
+				ghline(((*row) + 1) * (FHEIGHT + 1) - 1);
 			}
 		}
 
@@ -343,6 +317,7 @@ static void disasm_init(struct ucontext *context)
 {
 	int a;
 
+	tracer.skip = 0;
 	tracer.buffer.anchor.addr = (void*)(uintptr_t)((context->spc + 1) & ~1);
 	tracer.next_break = context->spc;
 	tracer.next_instruction = context->spc;
@@ -457,6 +432,10 @@ static int disasm_keyboard(struct ucontext *context, int key)
 	/* skip instruction */
 	if (key == KEY_OPTN) {
 		context->spc = tracer.next_break;
+		return (1);
+	}
+	if (key == KEY_VARS) {
+		tracer.skip = 1;
 		return (1);
 	}
 

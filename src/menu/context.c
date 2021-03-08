@@ -5,7 +5,6 @@
 
 #include <gint/std/stdio.h>
 #include <gint/keyboard.h>
-#include <gint/display.h>
 
 #include "./src/menu/internal/dictionary.h"
 
@@ -47,7 +46,7 @@ static void printXY(int column, int row, const char *text, uintptr_t reg)
 			idx = snprintf(&bf[idx], 128 - idx, ", %s", addrname);
 		a = 1;
 	}
-	dtext(column * (FWIDTH + 1), row * (FHEIGHT + 1), C_BLACK, bf);
+	gtextXY(column, row, bf);
 }
 
 /* context_ctor: Menu constructor */

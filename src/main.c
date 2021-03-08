@@ -52,9 +52,16 @@ static void gintrace_handler(struct ucontext *context)
 	}
 
 	/* if no instruction skip, restore */
-	spc = context->spc;
-	ubc_set_breakpoint(0, (void*)context->spc, NULL);
-	breakpoint = tracer.next_break;
+	if (tracer.skip == 0) {
+		spc = context->spc;
+		ubc_set_breakpoint(0, (void*)context->spc, NULL);
+		breakpoint = tracer.next_break;
+	} else {
+		ubc_set_breakpoint(0, (void*)tracer.next_break, NULL);
+		breakpoint = tracer.next_break;
+		spc = tracer.next_break;
+	}
+
 
 	/* unblock UBC interrupt */
 	ubc_unblock();
@@ -64,14 +71,15 @@ static void gintrace_handler(struct ucontext *context)
 /* casio_handler(): Casio handler */
 static void casio_handler(void)
 {
-#if 0
 	void (*bfile_openfile_os)(const uint16_t *filename, int mode, int p3);
 
 	bfile_openfile_os = syscall;
-	bfile_openfile_os(u"\\fls0\\dyntest", BFile_ReadOnly, 0);
-#endif
+	bfile_openfile_os(u"\\\\fls0\\abcdefgijklmn", BFile_ReadOnly, 0);
+
+#if 0
 	void (*debug_menu_filesystem)(void) = syscall;
 	debug_menu_filesystem();
+#endif
 }
 
 /* main(): User entry */
@@ -86,7 +94,8 @@ int main(void)
 
 	/* get syscall address */
 	void **systab = *(void ***)0x8002007c;
-	syscall = systab[0x1e48];
+	//syscall = systab[0x1e48];	// Fugue_debug_menu
+	syscall = systab[0x1da3];	// Bfile_OpenFile_OS
 
 
 	/* intialize UBC information */

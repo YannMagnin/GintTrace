@@ -7,7 +7,6 @@
 #include <gint/std/stdio.h>
 #include <gint/std/string.h>
 #include <gint/keyboard.h>
-#include <gint/display.h>
 
 /* define the menu information */
 /* TODO: find a way to have local information (session) */
@@ -33,26 +32,17 @@ static void hexdump_display(struct ucontext *context)
 	x = hexdump.cursor.hoffset;
 	y = hexdump.cursor.voffset;
 	for (int i = 0; i < GUI_DISP_NB_ROW; ++i) {
-		dprint(x * (FWIDTH + 1), (y + i) * (FHEIGHT + 1),
-						C_BLACK, "%p ", record);
+		gprintXY(x - 2, y + i, "%p", record);
 		for (int j = 0; j < 8; ++j) {
-			dprint((x + 9 + (j * 3)) * (FWIDTH + 1),
-					(y + i) * (FHEIGHT + 1),
-					C_BLACK, "%.2x ", record[j]);
+			gprintXY(x + 9 + (j * 3), y + i, "%.2x", record[j]);
 			if (record[j] < 0x20  || record[j] > 0x7e) {
-				dtext((x + 34 + j) * (FWIDTH + 1),
-						(y + i) * (FHEIGHT + 1),
-						C_BLACK,  ".");
+				gtextXY(x + 34 + j, y + i, ".");
 				continue;
 			}
-			dprint((x + 34 + j) * (FWIDTH + 1),
-					(y + i) * (FHEIGHT + 1),
-					C_BLACK, "%c", record[j]);
+			gprintXY(x + 34 + j, y + i, "%c", record[j]);
 		}
-		dtext((x + 33) * (FWIDTH + 1),
-				(y + i) * (FHEIGHT + 1), C_BLACK, "|");
-		dtext((x + 42) * (FWIDTH + 1),
-				(y + i) * (FHEIGHT + 1), C_BLACK, "|");
+		gtextXY(x + 33, y + i, "|");
+		gtextXY(x + 42, y + i, "|");
 		record = &record[8];
 	}
 }

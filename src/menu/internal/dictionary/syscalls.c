@@ -615,8 +615,12 @@ const struct sysname casio_syscalls[] = {
 	//
 	// Yatis
 	//
+	{.syscall = 0x0db0, .name = "int fugue_unmount(void);"},
+	{.syscall = 0x0db1, .name = "int fugue_mount(void);"},
+	{.syscall = 0x0dd2, .name = "const uint16_t *FONTCHARACTER_convert_to_FUGUECHARACTER(const uint16_t *src, uint8_t *dest);"},
 	{.syscall = 0x0ea6, .name = "void Debug_menu_TestMode(void);"},
 	{.syscall = 0x0ea7, .name = "void Debug_menu_TestMode(int unknown);"},
+	{.syscall = 0x1da1, .name = "int fugue_logical_format(void);"},
 	{.syscall = 0x1e44, .name = "void Debug_menu_FileSystem(void);"},
 	{.syscall = 0x1e45, .name = "void Debug_menu_Fugue_OpenFileInfo(void);"},
 	{.syscall = 0x1e48, .name = "void Debug_menu_Fugue_VolumeInfo(void);"},

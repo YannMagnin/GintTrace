@@ -8,7 +8,6 @@
 #include <gint/std/stdlib.h>
 #include <gint/std/string.h>
 #include <gint/keyboard.h>
-#include <gint/display.h>
 #include <gint/bfile.h>
 #include <gint/gint.h>
 
@@ -117,6 +116,8 @@ static void callnode_display(struct callnode *node, uint32_t bitmap[4],
 	char pipe;
 	int idx;
 	int i;
+	int x;
+	int y;
 
 	if (node == NULL || *row + callgraph.cursor.voffset >= GUI_DISP_NB_ROW)
 		return;
@@ -130,10 +131,9 @@ static void callnode_display(struct callnode *node, uint32_t bitmap[4],
 		shift = i & 0x1f;
 		if ((bitmap[idx] & (1 << shift)) != 0
 				&& *row + callgraph.cursor.voffset >= 0) {
-			dtext((2 + callgraph.cursor.hoffset + (i << 2))
-				* (FWIDTH + 1), (*row
-				+ callgraph.cursor.voffset)
-				* (FHEIGHT + 1), C_BLACK, "|   ");
+			x = callgraph.cursor.hoffset + (i << 2) + 2;
+			y = callgraph.cursor.voffset + (*row);
+			gtextXY(x, y, "|   ");
 		}
 	}
 
@@ -151,14 +151,13 @@ static void callnode_display(struct callnode *node, uint32_t bitmap[4],
 	if (*row + callgraph.cursor.voffset >= 0) {
 		callnode_generate_info(line, 256, node);
 		if (depth < 0) {
-			int a = callgraph.cursor.hoffset + (i << 2);
-			int b = callgraph.cursor.voffset + (*row);
-			dtext(a * (FWIDTH + 1), b * (FHEIGHT + 1), C_BLACK, line);
+			x = callgraph.cursor.hoffset + (i << 2);
+			y = callgraph.cursor.voffset + (*row);
+			gtextXY(x, y, line);
 		} else {
-			int a = callgraph.cursor.hoffset + (i << 2) + 2;
-			int b = callgraph.cursor.voffset + (*row);
-			dprint(a * (FWIDTH + 1), b * (FHEIGHT + 1),
-					C_BLACK, "%c-- %s", pipe, line);
+			x = callgraph.cursor.hoffset + (i << 2) + 2;
+			y = callgraph.cursor.voffset + (*row);
+			gprintXY(x, y, "%c-- %s", pipe, line);
 		}
 	}
 	*row = *row + 1;
