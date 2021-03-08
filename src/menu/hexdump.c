@@ -1,5 +1,6 @@
 #include "gintrace/menu/hexdump.h"
 #include "gintrace/ubc.h"
+#include "gintrace/tracer.h"
 #include "gintrace/gui/menu.h"
 #include "gintrace/gui/display.h"
 #include "gintrace/gui/input.h"
@@ -8,29 +9,24 @@
 #include <gint/std/string.h>
 #include <gint/keyboard.h>
 
-/* define the menu information */
-/* TODO: find a way to have local information (session) */
-struct hexdump hexdump;
-
 /* hexdump_ctor: Menu constructor */
-static void hexdump_ctor(void)
+static void hexdump_ctor(struct tsession *session)
 {
-	hexdump.cursor.hoffset = 0;
-	hexdump.cursor.voffset = 0;
-	hexdump.addr = (void*)0x88000000;
+	session->menu.hexdump.cursor.hoffset = 0;
+	session->menu.hexdump.cursor.voffset = 0;
+	session->menu.hexdump.addr = (void*)0x88000000;
 }
 
 /* hexdump_display(); Display trace information */
-static void hexdump_display(struct ucontext *context)
+static void hexdump_display(struct tsession *session)
 {
 	uint8_t *record;
 	int x;
 	int y;
 
-	(void)context;
-	record = hexdump.addr;
-	x = hexdump.cursor.hoffset;
-	y = hexdump.cursor.voffset;
+	record = session->menu.hexdump.addr;
+	x = session->menu.hexdump.cursor.hoffset;
+	y = session->menu.hexdump.cursor.voffset;
 	for (int i = 0; i < GUI_DISP_NB_ROW; ++i) {
 		gprintXY(x - 2, y + i, "%p", record);
 		for (int j = 0; j < 8; ++j) {
@@ -48,29 +44,27 @@ static void hexdump_display(struct ucontext *context)
 }
 
 /* hexdump_keyboard(): Handle one key event */
-static int hexdump_keyboard(struct ucontext *context, int key)
+static int hexdump_keyboard(struct tsession *session, int key)
 {
-	(void)context;
 	if (key == KEY_LEFT)
-		hexdump.cursor.hoffset += 1;
+		session->menu.hexdump.cursor.hoffset += 1;
 	if (key == KEY_RIGHT)
-		hexdump.cursor.hoffset -= 1;
+		session->menu.hexdump.cursor.hoffset -= 1;
 
 	if (key == KEY_UP)
-		hexdump.addr = &hexdump.addr[-8];
+		session->menu.hexdump.addr = &session->menu.hexdump.addr[-8];
 	if (key == KEY_DOWN)
-		hexdump.addr = &hexdump.addr[8];
+		session->menu.hexdump.addr = &session->menu.hexdump.addr[8];
 
 	return (0);
 }
 
 /* hexdump_command(): Handle user command */
-static void hexdump_command(struct ucontext *context, int argc, char **argv)
+static void hexdump_command(struct tsession *session, int argc, char **argv)
 {
 	uintptr_t address;
 	int i;
 
-	(void)context;
 	if (argc != 2)
 		return;
 	if (strcmp(argv[0], "jmp") != 0) {
@@ -96,17 +90,17 @@ static void hexdump_command(struct ucontext *context, int argc, char **argv)
 		input_write("'%s': second argument error", argv[0]);
 		return;
 	}
-	hexdump.addr = (void*)(address & ~3);
+	session->menu.hexdump.addr = (void*)(address & ~3);
 }
 
 //---
 // Define the menu
 //---
 struct menu menu_hexdump = {
-	.ctor     = &hexdump_ctor,
+	.ctor     = (void*)&hexdump_ctor,
 	.init     = NULL,
-	.display  = &hexdump_display,
-	.keyboard = &hexdump_keyboard,
-	.command  = &hexdump_command,
+	.display  = (void*)&hexdump_display,
+	.keyboard = (void*)&hexdump_keyboard,
+	.command  = (void*)&hexdump_command,
 	.dtor     = NULL
 };

@@ -1,5 +1,6 @@
 #include "gintrace/menu/callgraph.h"
 #include "gintrace/ubc.h"
+#include "gintrace/tracer.h"
 #include "gintrace/gui/menu.h"
 #include "gintrace/gui/display.h"
 #include "gintrace/gui/input.h"
@@ -12,13 +13,6 @@
 #include <gint/gint.h>
 
 #include "./src/menu/internal/dictionary.h"
-
-/* define the menu information */
-/* TODO: find a way to have local information (session) */
-struct callgraph callgraph;
-
-/* internal buffer */
-static char line[256];
 
 //---
 // callode management
@@ -85,7 +79,7 @@ static size_t callnode_generate_info(char *buf,
 }
 
 /* callnode_get_size(): Count the number of bytes that the callgraph take */
-static size_t callnode_export(int fd, struct callnode *node)
+static size_t callnode_export(int fd, struct callnode *node, char line[])
 {
 	if (node == NULL)
 		return (0);
@@ -103,14 +97,19 @@ static size_t callnode_export(int fd, struct callnode *node)
 	}
 
 	/* check other node */
-	size += callnode_export(fd, node->child);
-	size += callnode_export(fd, node->sibling);
+	size += callnode_export(fd, node->child, line);
+	size += callnode_export(fd, node->sibling, line);
 	return (size);
 }
 
 /* callnode_display(): Display callnode information */
-static void callnode_display(struct callnode *node, uint32_t bitmap[4],
-							int *row, int depth)
+struct cdinfo {
+	struct callgraph *callgraph;
+	uint32_t bitmap[4];
+	int row;
+};
+static void callnode_display(struct callnode *node,
+				struct cdinfo *info, int depth, char line[])
 {
 	char shift;
 	char pipe;
@@ -119,8 +118,11 @@ static void callnode_display(struct callnode *node, uint32_t bitmap[4],
 	int x;
 	int y;
 
-	if (node == NULL || *row + callgraph.cursor.voffset >= GUI_DISP_NB_ROW)
+	if (node == NULL
+	|| info->row + info->callgraph->cursor.voffset >= GUI_DISP_NB_ROW) {
 		return;
+	}
+
 	/* handle the bitmap (ugly / 20) */
 	i = -1;
 	idx = 0;
@@ -129,40 +131,40 @@ static void callnode_display(struct callnode *node, uint32_t bitmap[4],
 		if (idx >= 4)
 			break;
 		shift = i & 0x1f;
-		if ((bitmap[idx] & (1 << shift)) != 0
-				&& *row + callgraph.cursor.voffset >= 0) {
-			x = callgraph.cursor.hoffset + (i << 2) + 2;
-			y = callgraph.cursor.voffset + (*row);
+		if ((info->bitmap[idx] & (1 << shift)) != 0
+		&& info->row + info->callgraph->cursor.voffset >= 0) {
+			x = info->callgraph->cursor.hoffset + (i << 2) + 2;
+			y = info->callgraph->cursor.voffset + info->row;
 			gtextXY(x, y, "|   ");
 		}
 	}
 
 	/* generate the line */
 	pipe  = '|';
-	bitmap[idx] |= 1 << (depth & 0x1f);
+	info->bitmap[idx] |= 1 << (depth & 0x1f);
 	if (node->type == callnode_type_jmp
 			|| node->type == callnode_type_rte
 			|| node->type == callnode_type_rts) {
-		bitmap[idx] &= ~(1 << (depth & 0x1f));
+		info->bitmap[idx] &= ~(1 << (depth & 0x1f));
 		pipe = '`';
 	}
 
 	/* display the line then check child and siblig */
-	if (*row + callgraph.cursor.voffset >= 0) {
+	if (info->row + info->callgraph->cursor.voffset >= 0) {
 		callnode_generate_info(line, 256, node);
 		if (depth < 0) {
-			x = callgraph.cursor.hoffset + (i << 2);
-			y = callgraph.cursor.voffset + (*row);
+			x = info->callgraph->cursor.hoffset + (i << 2);
+			y = info->callgraph->cursor.voffset + info->row;
 			gtextXY(x, y, line);
 		} else {
-			x = callgraph.cursor.hoffset + (i << 2) + 2;
-			y = callgraph.cursor.voffset + (*row);
+			x = info->callgraph->cursor.hoffset + (i << 2) + 2;
+			y = info->callgraph->cursor.voffset + info->row;
 			gprintXY(x, y, "%c-- %s", pipe, line);
 		}
 	}
-	*row = *row + 1;
-	callnode_display(node->child, bitmap, row, depth + 1);
-	callnode_display(node->sibling, bitmap, row, depth);
+	info->row = info->row + 1;
+	callnode_display(node->child, info, depth + 1, line);
+	callnode_display(node->sibling, info, depth, line);
 }
 
 //---
@@ -170,16 +172,15 @@ static void callnode_display(struct callnode *node, uint32_t bitmap[4],
 //---
 
 /* callgraph_ctor: Menu constructor */
-static void callgraph_ctor(void)
+static void callgraph_ctor(struct tsession *session)
 {
-	callgraph.cursor.hoffset = 0;
-	callgraph.cursor.voffset = 0;
-	callgraph.root = NULL;
+	session->menu.callgraph.cursor.hoffset = 0;
+	session->menu.callgraph.cursor.voffset = 0;
+	session->menu.callgraph.root = NULL;
 }
 
 /* callgraph_init(): Invoked each time a break point occur */
-/* FIXME: recursive !! */
-static void callgraph_init(struct ucontext *context)
+static void callgraph_init(struct tsession *session)
 {
 	struct callnode *node;
 	uintptr_t address;
@@ -188,114 +189,114 @@ static void callgraph_init(struct ucontext *context)
 	int type;
 
 	/* check root node */
-	if (callgraph.root == NULL) {
-		node = callnode_create(NULL, context,
-				callnode_type_root, context->spc);
+	if (session->menu.callgraph.root == NULL) {
+		node = callnode_create(NULL, session->info.context,
+				callnode_type_root, session->info.context->spc);
 		if (node == NULL)
 			return;
-		callgraph.root = node;
-		callgraph.parent = callgraph.root;
+		session->menu.callgraph.root = node;
+		session->menu.callgraph.parent = session->menu.callgraph.root;
 	}
 
 	/* check error */
-	if (callgraph.parent == NULL)
+	if (session->menu.callgraph.parent == NULL)
 		return;
 
 	/* check opcode */
 	type = -1;
-	pc = (void*)(uintptr_t)context->spc;
+	pc = (void*)(uintptr_t)session->info.context->spc;
 	if ((pc[0] & 0xf000) == 0xb000) {
 		type = callnode_type_bsr;
 		b = pc[0] & 0x0fff;
 		if ((b & 0x800) != 0)
 			b = (0xfffff000 | b);
-		address = context->spc + 4 + (b << 1);
+		address = session->info.context->spc + 4 + (b << 1);
 	}
 	if ((pc[0] & 0xf0ff) == 0x0003) {
 		type = callnode_type_bsrf;
 		b = (pc[0] & 0x0f00) >> 8;
-		address = context->reg[b];
+		address = session->info.context->reg[b];
 	}
 	if ((pc[0] & 0xf0ff) == 0x400b) {
 		type = callnode_type_jsr;
 		b = (pc[0] & 0x0f00) >> 8;
-		address = context->reg[b];
+		address = session->info.context->reg[b];
 	}
 	if ((pc[0] & 0xf0ff) == 0x402b) {
 		type = callnode_type_jmp;
 		b = (pc[0] & 0x0f00) >> 8;
-		address = context->reg[b];
+		address = session->info.context->reg[b];
 	}
 	if ((pc[0] & 0xffff) == 0x002b) {
 		type = callnode_type_rte;
-		address = context->spc;
+		address = session->info.context->spc;
 	}
 	if ((pc[0] & 0xffff) == 0x000b) {
 		type = callnode_type_rts;
-		address = context->spc;
+		address = session->info.context->spc;
 	}
 	if (type == -1)
 		return;
 
 	/* generate the node then link with its sibling */
-	node = callnode_create(callgraph.parent, context, type, address);
+	node = callnode_create(session->menu.callgraph.parent,
+					session->info.context, type, address);
 	if (node == NULL)
 		return;
-	callnode_add_child(callgraph.parent, node);
+	callnode_add_child(session->menu.callgraph.parent, node);
 
 	/* find the next "current" node */
 	if (node->type == callnode_type_bsr
 			|| node->type == callnode_type_jsr
 			|| node->type == callnode_type_bsrf
 			|| node->type == callnode_type_jmp) {
-		callgraph.parent = node;
+		session->menu.callgraph.parent = node;
 		return;
 	}
-	while (callgraph.parent != NULL) {
-		if (callgraph.parent->type == callnode_type_jmp) {
-			callgraph.parent = callgraph.parent->parent;
+	while (session->menu.callgraph.parent != NULL) {
+		if (session->menu.callgraph.parent->type == callnode_type_jmp){
+			session->menu.callgraph.parent =
+				session->menu.callgraph.parent->parent;
 			continue;
 		}
-		callgraph.parent = callgraph.parent->parent;
+		session->menu.callgraph.parent =
+			session->menu.callgraph.parent->parent;
 		return;
 	}
 }
 
 /* callgraph_display(); Display trace information */
-static void callgraph_display(struct ucontext *context)
+static void callgraph_display(struct tsession *session)
 {
-	uint32_t bitmap[4];
-	int row;
+	struct cdinfo info;
+	char line[256];
 
-	(void)context;
-	row = 0;
-	memset(bitmap, 0x00, sizeof(bitmap));
-	callnode_display(callgraph.root, bitmap, &row, -1);
+	memset(&info, 0x00, sizeof(info));
+	info.callgraph = &session->menu.callgraph;
+	callnode_display(session->menu.callgraph.root, &info, -1, line);
 }
 
 /* callgraph_keyboard(): Handle one key event */
-static int callgraph_keyboard(struct ucontext *context, int key)
+static int callgraph_keyboard(struct tsession *session, int key)
 {
-	(void)context;
 	if (key == KEY_LEFT)
-		callgraph.cursor.hoffset += 1;
+		session->menu.callgraph.cursor.hoffset += 1;
 	if (key == KEY_RIGHT)
-		callgraph.cursor.hoffset -= 1;
+		session->menu.callgraph.cursor.hoffset -= 1;
 
 	if (key == KEY_UP)
-		callgraph.cursor.voffset += 1;
+		session->menu.callgraph.cursor.voffset += 1;
 	if (key == KEY_DOWN)
-		callgraph.cursor.voffset -= 1;
+		session->menu.callgraph.cursor.voffset -= 1;
 
 	return (0);
 }
 
 /* callgraph_command(): handle user command */
-static void callgraph_command(struct ucontext *context, int argc, char **argv)
+static void callgraph_command(struct tsession *session, int argc, char **argv)
 {
 	/* check useless export */
-	(void)context;
-	if (callgraph.root == NULL) {
+	if (session->menu.callgraph.root == NULL) {
 		input_write("nothing to export");
 		return;
 	}
@@ -311,7 +312,6 @@ static void callgraph_command(struct ucontext *context, int argc, char **argv)
 	}
 
 	/* convert the filename (arg2) into Bfile pathname */
-	/* TODO: handle special extention */
 	int i = -1;
 	uint16_t pathname[14 + strlen(argv[1]) + 1];
 	memcpy(pathname, u"\\\\fls0\\", 14);
@@ -322,6 +322,7 @@ static void callgraph_command(struct ucontext *context, int argc, char **argv)
 	/* check if the file exist */
 	input_write_noint("Check if the file exist");
 	gint_switch_to_casio();
+	char line[256];
 	int fd = BFile_Open(pathname, BFile_ReadOnly);
 	if (fd >= 0) {
 		gint_switch_to_gint();
@@ -345,7 +346,7 @@ static void callgraph_command(struct ucontext *context, int argc, char **argv)
 
 	/* create the file then dump information */
 	gint_switch_to_gint();
-	int size = callnode_export(-1, callgraph.root);
+	int size = callnode_export(-1, session->menu.callgraph.root, line);
 	input_write_noint("Create the file  (%d)", size);
 	gint_switch_to_casio();
 	fd = BFile_Create(pathname, BFile_File, &size);
@@ -367,7 +368,7 @@ static void callgraph_command(struct ucontext *context, int argc, char **argv)
 	gint_switch_to_gint();
 	input_write_noint("Open success, now write...");
 	gint_switch_to_casio();
-	callnode_export(fd, callgraph.root);
+	callnode_export(fd, session->menu.callgraph.root, line);
 	BFile_Close(fd);
 	gint_switch_to_gint();
 	input_write("success");
@@ -377,10 +378,10 @@ static void callgraph_command(struct ucontext *context, int argc, char **argv)
 // Define the menu
 //---
 struct menu menu_callgraph = {
-	.ctor     = &callgraph_ctor,
-	.init     = &callgraph_init,
-	.display  = &callgraph_display,
-	.keyboard = &callgraph_keyboard,
-	.command  = &callgraph_command,
+	.ctor     = (void*)&callgraph_ctor,
+	.init     = (void*)&callgraph_init,
+	.display  = (void*)&callgraph_display,
+	.keyboard = (void*)&callgraph_keyboard,
+	.command  = (void*)&callgraph_command,
 	.dtor     = NULL
 };

@@ -12,11 +12,12 @@
 #include <gint/keyboard.h>
 
 /* menu_create(): Create a group of menus */
-int menu_create(struct menu_group **gmenu)
+int menu_create(struct menu_group **gmenu, volatile void *arg)
 {
 	*gmenu = calloc(sizeof(struct menu_group), 1);
 	if (*gmenu == NULL)
 		return (menu_retval_enomem);
+	(*gmenu)->arg = arg;
 	return (menu_retval_success);
 }
 
@@ -38,7 +39,7 @@ int menu_register(struct menu_group *gmenu,
 	if (*node == NULL)
 		return (menu_retval_enomem);
 	if (menu != NULL && menu->ctor != NULL)
-		menu->ctor();
+		menu->ctor((void*)gmenu->arg);
 	if (gmenu->selected == NULL)
 		gmenu->selected = menu;
 	(*node)->menu = menu;
@@ -71,7 +72,7 @@ int menu_unregister(struct menu_group *gmenu, const char *name)
 }
 
 /* menu_init(): Initialize all menu */
-int menu_init(struct menu_group *gmenu, volatile void *arg)
+int menu_init(struct menu_group *gmenu)
 {
 	struct menu_list *node;
 
@@ -80,10 +81,9 @@ int menu_init(struct menu_group *gmenu, volatile void *arg)
 	node = gmenu->list;
 	while (node != NULL) {
 		if (node->menu != NULL && node->menu->init != NULL)
-			node->menu->init((void*)arg);
+			node->menu->init((void*)gmenu->arg);
 		node = node->next;
 	}
-	gmenu->arg = arg;
 	gmenu->is_open = 0;
 	return (menu_retval_success);
 

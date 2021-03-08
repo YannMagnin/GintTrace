@@ -8,12 +8,12 @@
 
 /* define menu information */
 struct menu {
-	void (*ctor)(void);
-	void (*init)(struct ucontext *ctx);
-	void (*display)(struct ucontext *ctx);
-	int  (*keyboard)(struct ucontext *ctx, int key);
-	void (*command)(struct ucontext *ctx, int argc, char **argv);
-	void (*dtor)(void);
+	void (*ctor)(void *data);
+	void (*init)(void *data);
+	void (*display)(void *data);
+	int  (*keyboard)(void *data, int key);
+	void (*command)(void *data, int argc, char **argv);
+	void (*dtor)(void *data);
 };
 
 /* menu group information */
@@ -42,7 +42,7 @@ enum {
 };
 
 /* menu_create(): Create a group of menus */
-extern int menu_create(struct menu_group **gmenu);
+extern int menu_create(struct menu_group **gmenu, volatile void *arg);
 
 /* menu_register(): Register a new menu to the internal menu table */
 extern int menu_register(struct menu_group *gmenus,
@@ -56,7 +56,7 @@ extern int menu_unregister(struct menu_group *gmenus, const char *name);
 extern int menu_is_open(struct menu_group *gmenu);
 
 /* menu_init(): Initialize all menu */
-extern int menu_init(struct menu_group *gmenus, volatile void *arg);
+extern int menu_init(struct menu_group *gmenus);
 
 /* menu_draw(): Draw menu specific information and menu abstraction overlay */
 extern int menu_draw(struct menu_group *gmenus);

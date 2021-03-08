@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 /* mcontext: menu context internal structure */
-struct mcontext {
+struct context {
 	struct {
 		int hoffset;
 		int voffset;

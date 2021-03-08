@@ -1,5 +1,5 @@
-#ifndef __GINTRACE_TRACER_H__
-# define __GINTRACE_TRACER_H__
+#ifndef __GINTRACE_DISASM_H__
+# define __GINTRACE_DISASM_H__
 
 #include <stddef.h>
 #include <stdint.h>
@@ -17,7 +17,7 @@ struct buffcursor {
 };
 
 /* tracer: internal information used to display disassembly view */
-struct tracer {
+struct disasm {
 	/* circular buffer information.
 	 * Note that the circular buffer is very special, it refert, on the
 	 * first level, the "instruction address" then, the second level its
@@ -53,4 +53,4 @@ struct tracer {
 /* extern menu information */
 extern struct menu menu_disasm;
 
-#endif /*__GINTRACE_TRACER_H__*/
+#endif /*__GINTRACE_DISASM_H__*/

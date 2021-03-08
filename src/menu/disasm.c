@@ -1,5 +1,6 @@
 #include "gintrace/menu/disasm.h"
 #include "gintrace/ubc.h"
+#include "gintrace/tracer.h"
 #include "gintrace/gui/menu.h"
 #include "gintrace/gui/display.h"
 #include "gintrace/gui/input.h"
@@ -11,10 +12,6 @@
 #include <gint/std/stdio.h>
 #include <gint/display.h>
 #include <gint/keyboard.h>
-
-/* define the menu information */
-/* TODO: find a way to have local information (session) */
-struct tracer tracer;
 
 
 /* disasm_util_line_update(): Little helper to update the line index
@@ -28,16 +25,17 @@ struct tracer tracer;
  *
  * @return
  *   - the new line index */
-static int disasm_util_line_update(int line_idx, int direction)
+static int disasm_util_line_update(struct disasm *disasm,
+						int line_idx, int direction)
 {
 	line_idx = line_idx + direction;
 	while (1) {
 		if (line_idx < 0) {
-			line_idx += (int)tracer.buffer.size.height;
+			line_idx += (int)disasm->buffer.size.height;
 			continue;
 		}
-		if (line_idx >= (int)tracer.buffer.size.height) {
-			line_idx -= (int)tracer.buffer.size.height;
+		if (line_idx >= (int)disasm->buffer.size.height) {
+			line_idx -= (int)disasm->buffer.size.height;
 			continue;
 		}
 		break;
@@ -59,9 +57,9 @@ static int disasm_util_line_update(int line_idx, int direction)
  *              type & 1 -> check hardware module register
  *              type & 2 -> check syscall address
  *              type & 4 -> check OS-specific address */
-static void disasm_check_special_addr(char *buffer, void *address, int type)
+static void disasm_check_special_addr(struct disasm *disasm,
+					char *buffer, void *address, int type)
 {
-	extern struct tracer tracer;
 	const char *addrname;
 
 	addrname = NULL;
@@ -73,7 +71,7 @@ static void disasm_check_special_addr(char *buffer, void *address, int type)
 		addrname = dictionary_notes_check(address);
 	if (addrname == NULL)
 		return;
-	snprintf(buffer, tracer.buffer.size.width,
+	snprintf(buffer, disasm->buffer.size.width,
 			"@note: %p -> %s\n", address, addrname);
 }
 
@@ -91,7 +89,8 @@ static void disasm_check_special_addr(char *buffer, void *address, int type)
  * @arg:
  *   - line   Line index, used to find the buffer line to store information
  *   - pc     Current Program Counter which store the instruction address */
-static void disasm_get_mnemonic_info(int line, uint16_t *pc)
+static void disasm_get_mnemonic_info(struct disasm *disasm,
+							int line, uint16_t *pc)
 {
 	const struct opcode *opcode_info;
 	uint16_t opcode;
@@ -99,29 +98,29 @@ static void disasm_get_mnemonic_info(int line, uint16_t *pc)
 	int note;
 
 	/* Wipe note */
-	tracer.buffer.raw[line][0][0] = '\0';
-	tracer.buffer.raw[line][1][0] = '\0';
-	tracer.buffer.raw[line][2][0] = '\0';
-	tracer.buffer.raw[line][3][0] = '\0';
-	tracer.buffer.raw[line][4][0] = '\0';
+	disasm->buffer.raw[line][0][0] = '\0';
+	disasm->buffer.raw[line][1][0] = '\0';
+	disasm->buffer.raw[line][2][0] = '\0';
+	disasm->buffer.raw[line][3][0] = '\0';
+	disasm->buffer.raw[line][4][0] = '\0';
 
 	/* check special address (register, syscall, ...) */
 	note = 1;
-	disasm_check_special_addr(tracer.buffer.raw[line][note], pc, 6);
-	if (tracer.buffer.raw[line][note][0] != '\0')
+	disasm_check_special_addr(disasm, disasm->buffer.raw[line][note], pc, 6);
+	if (disasm->buffer.raw[line][note][0] != '\0')
 		note += 1;
 
 	/* generate the "default" string info (only the address and word) */
-	snprintf(&tracer.buffer.raw[line][0][0],
-			tracer.buffer.size.width, "%.8lx %.4x ",
+	snprintf(&disasm->buffer.raw[line][0][0],
+			disasm->buffer.size.width, "%.8lx %.4x ",
 			(uintptr_t)pc, (unsigned int)pc[0]);
 
 	/* Try to get the current opcode */
 	opcode = pc[0];
 	opcode_info = dictionary_opcodes_check(opcode);
 	if (opcode_info == NULL) {
-		snprintf(&tracer.buffer.raw[line][0][14],
-				tracer.buffer.size.width - 14,
+		snprintf(&disasm->buffer.raw[line][0][14],
+				disasm->buffer.size.width - 14,
 				".word\t%#.4x", (int)opcode);
 		return;
 	}
@@ -131,13 +130,14 @@ static void disasm_get_mnemonic_info(int line, uint16_t *pc)
 		arg[i] = dictionary_opcodes_get_arg(opcode_info, opcode, i, pc);
 		if (arg[i] == 0x00000000)
 			continue;
-		disasm_check_special_addr(tracer.buffer.raw[line][note++],
+		disasm_check_special_addr(disasm,
+				disasm->buffer.raw[line][note++],
 				(void*)arg[i], 7);
 	}
 
 	/* generate the complete mnemonic information */
-	snprintf(&tracer.buffer.raw[line][0][14],
-			tracer.buffer.size.width - 14,
+	snprintf(&disasm->buffer.raw[line][0][14],
+			disasm->buffer.size.width - 14,
 			opcode_info->name, arg[0], arg[1], arg[2]);
 }
 
@@ -152,13 +152,13 @@ static void disasm_get_mnemonic_info(int line, uint16_t *pc)
  *
  * @return
  *   The note index max of the line_idx */
-static int disasm_util_note_counter(int line_idx)
+static int disasm_util_note_counter(struct disasm *disasm, int line_idx)
 {
 	int note_idx;
 
 	note_idx = 0;
 	while (++note_idx < 5) {
-		if (tracer.buffer.raw[line_idx][note_idx][0] == '\0')
+		if (disasm->buffer.raw[line_idx][note_idx][0] == '\0')
 			break;
 	}
 	return (note_idx - 1);
@@ -188,12 +188,13 @@ static int disasm_util_row_update(int *row, int direction)
  *   - line_idx   Line index
  *   - pc         Memory address
  *   - direction  Direction to push the limit */
-static void disasm_util_line_fetch(int line_idx, uint16_t *pc, int direction)
+static void disasm_util_line_fetch(struct disasm *disasm, int line_idx,
+						uint16_t *pc, int direction)
 {
-	if (tracer.buffer.raw[line_idx][0][0] == '\0') {
-		disasm_get_mnemonic_info(line_idx, pc);
-		line_idx = disasm_util_line_update(line_idx, direction);
-		tracer.buffer.raw[line_idx][0][0] = '\0';
+	if (disasm->buffer.raw[line_idx][0][0] == '\0') {
+		disasm_get_mnemonic_info(disasm, line_idx, pc);
+		line_idx = disasm_util_line_update(disasm, line_idx, direction);
+		disasm->buffer.raw[line_idx][0][0] = '\0';
 	}
 }
 
@@ -217,43 +218,44 @@ static void disasm_util_line_fetch(int line_idx, uint16_t *pc, int direction)
  * @return
  *  - 0          Row is still on the screen
  *  - 1          Row is out-of-screen */
-int disasm_display_addr_info(int *row, struct buffcursor *cursor,
-		struct ucontext *context, int direction, int pc)
+int disasm_display_addr_info(struct tsession *session, int *row,
+			struct buffcursor *cursor, int direction, int pc)
 {
+	struct disasm *disasm = &session->menu.disasm;
 	int note_max_idx;
 	void *ptr;
 
 	/* generate the line if missing and move the limit */
-	disasm_util_line_fetch(cursor->line_idx,
-			&tracer.buffer.anchor.addr[pc], direction);
+	disasm_util_line_fetch(disasm, cursor->line_idx,
+			&disasm->buffer.anchor.addr[pc], direction);
 
 	/* get the last note index if downward */
 	note_max_idx = 5;
 	if (direction == 1)
-		note_max_idx = disasm_util_note_counter(cursor->line_idx);
+		note_max_idx = disasm_util_note_counter(disasm, cursor->line_idx);
 
 	/* walk trough the notes */
 	while (cursor->note_idx <= note_max_idx && cursor->note_idx >= 0) {
 		/* check loop condition */
-		ptr = tracer.buffer.raw[cursor->line_idx][cursor->note_idx];
+		ptr = disasm->buffer.raw[cursor->line_idx][cursor->note_idx];
 		if (((char*)ptr)[0] == '\0')
 			break;
 
 		/* check note */
 		if (cursor->note_idx != 0) {
-			gnoteXY(tracer.disp.hoffset, *row, ptr);
+			gnoteXY(disasm->disp.hoffset, *row, ptr);
 		} else {
 			/* check instruction */
-			gtextXY(tracer.disp.hoffset, *row, ptr);
+			gtextXY(disasm->disp.hoffset, *row, ptr);
 
 			/* highlight SPC if possible */
-			ptr = &tracer.buffer.anchor.addr[pc];
-			if ((uintptr_t)ptr == context->spc)
+			ptr = &disasm->buffer.anchor.addr[pc];
+			if ((uintptr_t)ptr == session->info.context->spc)
 				ghreverse((*row) * (FHEIGHT+1) - 1, FHEIGHT+2);
 
 			/* draw next break / instruction */
-			if (tracer.next_break != context->spc
-					&& ptr == (void*)tracer.next_break) {
+			if (disasm->next_break != session->info.context->spc
+					&& ptr == (void*)disasm->next_break) {
 				ghline(((*row) + 0) * (FHEIGHT + 1) - 1);
 				ghline(((*row) + 1) * (FHEIGHT + 1) - 1);
 			}
@@ -273,67 +275,75 @@ int disasm_display_addr_info(int *row, struct buffcursor *cursor,
 // Menu functions
 //---
 /* disasm_ctor(): disasm menu constructor */
-static void disasm_ctor(void)
+static void disasm_ctor(struct tsession *session)
 {
-	memset(&tracer, 0x00, sizeof(struct tracer));
-	tracer.buffer.size.width  = GUI_DISP_NB_COLUMN * 2;
-	tracer.buffer.size.height = GUI_DISP_NB_ROW * 2 + 2;
-	tracer.buffer.raw = calloc(sizeof(void*), tracer.buffer.size.height);
-	for (size_t i = 0; i < tracer.buffer.size.height; ++i) {
-		tracer.buffer.raw[i] = calloc(sizeof(char*), 5);
-		tracer.buffer.raw[i][0] = calloc(tracer.buffer.size.width, 1);
-		tracer.buffer.raw[i][1] = calloc(tracer.buffer.size.width, 1);
-		tracer.buffer.raw[i][2] = calloc(tracer.buffer.size.width, 1);
-		tracer.buffer.raw[i][3] = calloc(tracer.buffer.size.width, 1);
-		tracer.buffer.raw[i][4] = calloc(tracer.buffer.size.width, 1);
+	struct disasm *disasm = &session->menu.disasm;
+
+	memset(disasm, 0x00, sizeof(struct disasm));
+	disasm->buffer.size.width  = GUI_DISP_NB_COLUMN * 2;
+	disasm->buffer.size.height = GUI_DISP_NB_ROW * 2 + 2;
+	disasm->buffer.raw = calloc(sizeof(void*), disasm->buffer.size.height);
+	for (size_t i = 0; i < disasm->buffer.size.height; ++i) {
+		disasm->buffer.raw[i] = calloc(sizeof(char*), 5);
+		disasm->buffer.raw[i][0] = calloc(disasm->buffer.size.width, 1);
+		disasm->buffer.raw[i][1] = calloc(disasm->buffer.size.width, 1);
+		disasm->buffer.raw[i][2] = calloc(disasm->buffer.size.width, 1);
+		disasm->buffer.raw[i][3] = calloc(disasm->buffer.size.width, 1);
+		disasm->buffer.raw[i][4] = calloc(disasm->buffer.size.width, 1);
 	}
-	tracer.buffer.cursor.line_idx = 0;
-	tracer.buffer.cursor.note_idx = 0;
-	tracer.disp.hoffset = 0;
-	tracer.disp.voffset = 0;
+	disasm->buffer.cursor.line_idx = 0;
+	disasm->buffer.cursor.note_idx = 0;
+	disasm->disp.hoffset = 0;
+	disasm->disp.voffset = 0;
 }
 
 /* disasm_dtor(): disasm menu destructor */
-static void disasm_dtor(void)
+static void disasm_dtor(struct tsession *session)
 {
-	if (tracer.buffer.raw != NULL) {
-		for (size_t i = 0; i < tracer.buffer.size.height; ++i) {
-			if (tracer.buffer.raw[i] == NULL)
+	struct disasm *disasm;
+
+	disasm = &session->menu.disasm;
+	if (disasm->buffer.raw != NULL) {
+		for (size_t i = 0; i < disasm->buffer.size.height; ++i) {
+			if (disasm->buffer.raw[i] == NULL)
 				continue;
-			free(tracer.buffer.raw[i][0]);
-			free(tracer.buffer.raw[i][1]);
-			free(tracer.buffer.raw[i][2]);
-			free(tracer.buffer.raw[i][3]);
-			free(tracer.buffer.raw[i][4]);
-			free(tracer.buffer.raw[i]);
+			free(disasm->buffer.raw[i][0]);
+			free(disasm->buffer.raw[i][1]);
+			free(disasm->buffer.raw[i][2]);
+			free(disasm->buffer.raw[i][3]);
+			free(disasm->buffer.raw[i][4]);
+			free(disasm->buffer.raw[i]);
 		}
-		free(tracer.buffer.raw);
+		free(disasm->buffer.raw);
 	}
-	memset(&tracer, 0x00, sizeof(struct tracer));
+	memset(disasm, 0x00, sizeof(struct disasm));
 }
 
 /* disasm_init(): Called at each breakpoint, update the internal buffer */
-static void disasm_init(struct ucontext *context)
+static void disasm_init(struct tsession *session)
 {
+	struct disasm *disasm = &session->menu.disasm;
 	int a;
 
-	tracer.skip = 0;
-	tracer.buffer.anchor.addr = (void*)(uintptr_t)((context->spc + 1) & ~1);
-	tracer.next_break = context->spc;
-	tracer.next_instruction = context->spc;
+	disasm->skip = 0;
+	disasm->buffer.anchor.addr =
+		(void*)(uintptr_t)((session->info.context->spc + 1) & ~1);
+	disasm->next_break = session->info.context->spc;
+	disasm->next_instruction = session->info.context->spc;
 
-	tracer.buffer.cursor.note_idx = 0;
-	tracer.buffer.cursor.line_idx = 0;
-	a = disasm_util_line_update(tracer.buffer.cursor.line_idx, -1);
-	tracer.buffer.raw[a][0][0] = '\0';
-	tracer.buffer.raw[tracer.buffer.cursor.line_idx][0][0] = '\0';
-	disasm_util_line_fetch(tracer.buffer.cursor.line_idx,
-					&tracer.buffer.anchor.addr[0], 1);
+	disasm->buffer.cursor.note_idx = 0;
+	disasm->buffer.cursor.line_idx = 0;
+	a = disasm_util_line_update(disasm, disasm->buffer.cursor.line_idx, -1);
+	disasm->buffer.raw[a][0][0] = '\0';
+	disasm->buffer.raw[disasm->buffer.cursor.line_idx][0][0] = '\0';
+	disasm_util_line_fetch(disasm, disasm->buffer.cursor.line_idx,
+					&disasm->buffer.anchor.addr[0], 1);
 }
 
 /* disasm_display(); Display trace information */
-static void disasm_display(struct ucontext *context)
+static void disasm_display(struct tsession *session)
 {
+	struct disasm *disasm = &session->menu.disasm;
 	struct buffcursor cursor;
 	int row;
 	int pc;
@@ -341,12 +351,12 @@ static void disasm_display(struct ucontext *context)
 	/* display the first part (current middle line and before, upward) */
 	pc = 0;
 	row = GUI_DISP_NB_ROW / 2;
-	cursor.line_idx = tracer.buffer.cursor.line_idx;
-	cursor.note_idx = tracer.buffer.cursor.note_idx;
-	disasm_display_addr_info(&row, &cursor, context, -1, pc);
+	cursor.line_idx = disasm->buffer.cursor.line_idx;
+	cursor.note_idx = disasm->buffer.cursor.note_idx;
+	disasm_display_addr_info(session, &row, &cursor, -1, pc);
 	while (row >= 0) {
-		disasm_display_addr_info(&row, &cursor, context, -1, pc);
-		cursor.line_idx = disasm_util_line_update(cursor.line_idx, -1);
+		disasm_display_addr_info(session, &row, &cursor, -1, pc);
+		cursor.line_idx = disasm_util_line_update(disasm, cursor.line_idx, -1);
 		cursor.note_idx = 0;
 		pc = pc - 1;
 	}
@@ -360,82 +370,82 @@ static void disasm_display(struct ucontext *context)
 	 *   information, get the note index max then start displaying lines. */
 	pc = 0;
 	row = (GUI_DISP_NB_ROW / 2) + 1;
-	cursor.line_idx = tracer.buffer.cursor.line_idx;
-	cursor.note_idx = tracer.buffer.cursor.note_idx - 1;
+	cursor.line_idx = disasm->buffer.cursor.line_idx;
+	cursor.note_idx = disasm->buffer.cursor.note_idx - 1;
 	if (cursor.note_idx < 0) {
 		pc = 1;
-		cursor.line_idx = disasm_util_line_update(cursor.line_idx, 1);
-		disasm_util_line_fetch(cursor.line_idx,
-					&tracer.buffer.anchor.addr[pc], 1);
-		cursor.note_idx = disasm_util_note_counter(cursor.line_idx);
+		cursor.line_idx = disasm_util_line_update(disasm, cursor.line_idx, 1);
+		disasm_util_line_fetch(disasm, cursor.line_idx,
+					&disasm->buffer.anchor.addr[pc], 1);
+		cursor.note_idx = disasm_util_note_counter(disasm, cursor.line_idx);
 	}
 	while (row <= GUI_DISP_NB_ROW) {
-		disasm_display_addr_info(&row, &cursor, context, 1, pc);
+		disasm_display_addr_info(session, &row, &cursor, 1, pc);
 		pc = pc + 1;
-		cursor.line_idx = disasm_util_line_update(cursor.line_idx, 1);
-		disasm_util_line_fetch(cursor.line_idx,
-					&tracer.buffer.anchor.addr[pc], 1);
-		cursor.note_idx = disasm_util_note_counter(cursor.line_idx);
+		cursor.line_idx = disasm_util_line_update(disasm, cursor.line_idx, 1);
+		disasm_util_line_fetch(disasm, cursor.line_idx,
+					&disasm->buffer.anchor.addr[pc], 1);
+		cursor.note_idx = disasm_util_note_counter(disasm, cursor.line_idx);
 	}
 }
 
 /* disasm_keyboard(): Handle one key event */
-static int disasm_keyboard(struct ucontext *context, int key)
+static int disasm_keyboard(struct tsession *session, int key)
 {
+	struct disasm *disasm = &session->menu.disasm;
 	int note_idx;
 	int line_idx;
 
 	/* horizontal update */
-	(void)context;
 	if (key == KEY_LEFT)
-		tracer.disp.hoffset += 1;
+		disasm->disp.hoffset += 1;
 	if (key == KEY_RIGHT)
-		tracer.disp.hoffset -= 1;
+		disasm->disp.hoffset -= 1;
 
 	/* vertical update */
 	if (key == KEY_UP) {
-		tracer.buffer.cursor.note_idx += 1;
-		note_idx = tracer.buffer.cursor.note_idx;
-		line_idx = tracer.buffer.cursor.line_idx;
+		disasm->buffer.cursor.note_idx += 1;
+		note_idx = disasm->buffer.cursor.note_idx;
+		line_idx = disasm->buffer.cursor.line_idx;
 		if (note_idx >= 5
-		|| tracer.buffer.raw[line_idx][note_idx][0] == '\0') {
-			tracer.buffer.anchor.addr =
-						&tracer.buffer.anchor.addr[-1];
-			line_idx = disasm_util_line_update(line_idx, -1);
-			tracer.buffer.cursor.line_idx = line_idx;
-			tracer.buffer.cursor.note_idx = 0;
+		|| disasm->buffer.raw[line_idx][note_idx][0] == '\0') {
+			disasm->buffer.anchor.addr =
+					&disasm->buffer.anchor.addr[-1];
+			line_idx = disasm_util_line_update(disasm, line_idx, -1);
+			disasm->buffer.cursor.line_idx = line_idx;
+			disasm->buffer.cursor.note_idx = 0;
 		}
 	}
 	if (key == KEY_DOWN) {
-		tracer.buffer.cursor.note_idx -= 1;
-		note_idx = tracer.buffer.cursor.note_idx;
-		line_idx = tracer.buffer.cursor.line_idx;
+		disasm->buffer.cursor.note_idx -= 1;
+		note_idx = disasm->buffer.cursor.note_idx;
+		line_idx = disasm->buffer.cursor.line_idx;
 		if (note_idx < 0) {
-			tracer.buffer.anchor.addr =
-						&tracer.buffer.anchor.addr[1];
-			line_idx = disasm_util_line_update(line_idx, 1);
-			disasm_util_line_fetch(line_idx, tracer.memory, 1);
-			note_idx = disasm_util_note_counter(line_idx);
-			tracer.buffer.cursor.line_idx = line_idx;
-			tracer.buffer.cursor.note_idx = note_idx;
+			disasm->buffer.anchor.addr =
+						&disasm->buffer.anchor.addr[1];
+			line_idx = disasm_util_line_update(disasm, line_idx, 1);
+			disasm_util_line_fetch(disasm, line_idx, disasm->memory, 1);
+			note_idx = disasm_util_note_counter(disasm, line_idx);
+			disasm->buffer.cursor.line_idx = line_idx;
+			disasm->buffer.cursor.note_idx = note_idx;
 		}
 	}
 
 	/* move break point */
 	if (key == KEY_PLUS)
-		tracer.next_break += 2;
+		disasm->next_break += 2;
 	if (key == KEY_MINUS)
-		tracer.next_break -= 2;
+		disasm->next_break -= 2;
 	if (key == KEY_NEG)
-		tracer.next_break = (uintptr_t)tracer.buffer.anchor.addr;
+		disasm->next_break = (uintptr_t)disasm->buffer.anchor.addr;
 
 	/* skip instruction */
 	if (key == KEY_OPTN) {
-		context->spc = tracer.next_break;
+		session->info.context->spc = disasm->next_break;
 		return (1);
 	}
 	if (key == KEY_VARS) {
-		tracer.skip = 1;
+		disasm->skip = 1;
 		return (1);
 	}
 
@@ -443,8 +453,9 @@ static int disasm_keyboard(struct ucontext *context, int key)
 }
 
 /* disasm_command(): Handle user command */
-static void disasm_command(struct ucontext *context, int argc, char **argv)
+static void disasm_command(struct tsession *session, int argc, char **argv)
 {
+	struct disasm *disasm;
 	uintptr_t address;
 	uint8_t action;
 	int idx;
@@ -501,27 +512,28 @@ static void disasm_command(struct ucontext *context, int argc, char **argv)
 	if ((action & 2) != 0) {
 		if (address >= 0x1fff)
 			goto error_part;
-#ifdef FXCG50
+		#ifdef FXCG50
 		uintptr_t *systab = *(uintptr_t **)0x8002007c;
-#endif
-#ifdef FX9860
+		#endif
+		#ifdef FX9860
 		uintptr_t *systab = *(uintptr_t **)0x8001007c;
-#endif
+		#endif
 		if (idx == 2) {
 			input_write("syscall %x: %p", address, systab[address]);
 			return;
 		}
 		address = systab[address];
 	}
-	tracer.buffer.anchor.addr = (void*)(address & ~1);
-	tracer.buffer.cursor.note_idx = 0;
-	tracer.buffer.cursor.line_idx = 0;
-	i = disasm_util_line_update(tracer.buffer.cursor.line_idx, -1);
-	tracer.buffer.raw[i][0][0] = '\0';
-	tracer.buffer.raw[tracer.buffer.cursor.line_idx][0][0] = '\0';
-	disasm_util_line_fetch(tracer.buffer.cursor.line_idx,
-					&tracer.buffer.anchor.addr[0], 1);
-	disasm_display(context);
+	disasm = &session->menu.disasm;
+	disasm->buffer.anchor.addr = (void*)(address & ~1);
+	disasm->buffer.cursor.note_idx = 0;
+	disasm->buffer.cursor.line_idx = 0;
+	i = disasm_util_line_update(disasm, disasm->buffer.cursor.line_idx, -1);
+	disasm->buffer.raw[i][0][0] = '\0';
+	disasm->buffer.raw[disasm->buffer.cursor.line_idx][0][0] = '\0';
+	disasm_util_line_fetch(disasm, disasm->buffer.cursor.line_idx,
+					&disasm->buffer.anchor.addr[0], 1);
+	disasm_display(session);
 	return;
 
 	/* error part */
@@ -533,10 +545,10 @@ error_part:
 // Define the menu
 //---
 struct menu menu_disasm = {
-	.ctor     = &disasm_ctor,
-	.init     = &disasm_init,
-	.display  = &disasm_display,
-	.keyboard = &disasm_keyboard,
-	.command  = &disasm_command,
-	.dtor     = &disasm_dtor
+	.ctor     = (void*)&disasm_ctor,
+	.init     = (void*)&disasm_init,
+	.display  = (void*)&disasm_display,
+	.keyboard = (void*)&disasm_keyboard,
+	.command  = (void*)&disasm_command,
+	.dtor     = (void*)&disasm_dtor
 };
