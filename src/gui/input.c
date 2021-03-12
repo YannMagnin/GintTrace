@@ -246,9 +246,6 @@ static int input_key_buffer_update(key_event_t key_event)
 int input_read(char *buffer, size_t size, const char *prefix, ...)
 {
 	key_event_t key;
-	uint16_t *secondary;
-	uint16_t *main;
-	void *tmp;
 	int spe;
 
 	/* check obvious error */
@@ -272,13 +269,17 @@ int input_read(char *buffer, size_t size, const char *prefix, ...)
 	}
 
 	/* Gint workaround to freeze the current display */
+#ifdef FXCG50
+	uint16_t *secondary;
+	uint16_t *main;
 	dgetvram(&main, &secondary);
 	if (gint_vram == main) {
-		tmp = main;
+		void *tmp = main;
 		main = secondary;
 		secondary = tmp;
 	}
 	memcpy(secondary, main, 2*396*224);
+#endif
 
 
 	/* keyboard handling */
@@ -304,10 +305,7 @@ int input_write(const char *format, ...)
 {
 	char buffer[512];
 	va_list _args;
-	uint16_t *secondary;
-	uint16_t *main;
 	size_t size;
-	void *tmp;
 
 	va_start(_args, format);
 	size = vsnprintf(buffer, 512, format, _args);
@@ -322,13 +320,17 @@ int input_write(const char *format, ...)
 	input_info.buffer.max = 512;
 
 	/* Gint workaround to freeze the current display */
+#ifdef FXCG50
+	uint16_t *secondary;
+	uint16_t *main;
 	dgetvram(&main, &secondary);
 	if (gint_vram == main) {
-		tmp = main;
+		void *tmp = main;
 		main = secondary;
 		secondary = tmp;
 	}
 	memcpy(secondary, main, 2*396*224);
+#endif
 
 	/* display and wait user event */
 	input_info.config.cursor = 0;
@@ -342,10 +344,7 @@ int input_write_noint(const char *format, ...)
 {
 	char buffer[512];
 	va_list _args;
-	uint16_t *secondary;
-	uint16_t *main;
 	size_t size;
-	void *tmp;
 
 	va_start(_args, format);
 	size = vsnprintf(buffer, 512, format, _args);
@@ -360,13 +359,17 @@ int input_write_noint(const char *format, ...)
 	input_info.buffer.max = 512;
 
 	/* Gint workaround to freeze the current display */
+#ifdef FXCG50
+	uint16_t *secondary;
+	uint16_t *main;
 	dgetvram(&main, &secondary);
 	if (gint_vram == main) {
-		tmp = main;
+		void *tmp = main;
 		main = secondary;
 		secondary = tmp;
 	}
 	memcpy(secondary, main, 2*396*224);
+#endif
 
 	/* display and wait user event */
 	input_info.config.cursor = 0;

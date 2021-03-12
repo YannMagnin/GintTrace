@@ -1,208 +1,417 @@
 #! /usr/bin/make -f
-#  Default Makefile for fxSDK add-ins. This file was probably copied there by
-#  the [fxsdk] program.
 #---
-
 #
-#  Configuration
+#  gintrace project Makefile
 #
+# Build architecture:
+# build/
+#  |-- libraries/
+#  |    |-- static/
+#  |    |    |-- fx/
+#  |    |    |    |-- gui_display.o
+#  |    |    |    |-- gui_menu.o
+#  |    |    |    ...
+#  |    |    |    `-- ubc_handler.o
+#  |    |    `-- cg/
+#  |    |         |-- gui_display.o
+#  |    |         |-- gui_menu.o
+#  |    |         ...
+#  |    |         `-- ubc_handler.o
+#  |    `-- dynamic/
+#  |         |-- fx/
+#  |         |    |-- gui_display.o
+#  |         |    |-- gui_menu.o
+#  |         |    ...
+#  |         |    `-- ubc_handler.o
+#  |         `-- cg/
+#  |              |-- gui_display.o
+#  |              |-- gui_menu.o
+#  |              ...
+#  |              `-- ubc_handler.o
+#  `-- demo/
+#       |-- fx/
+#       |    |-- main.o
+#       |    `-- map (ELF link map informations)
+#       `-- cg/
+#            |-- main.o
+#            `-- map
+#
+#---
+MAJOR	:= 0
+MINOR	:= 8
+PATCH	:= 0
+EXTRAVERSION	:=
 
-include project.cfg
 
-# Compiler flags
-CFLAGSFX = $(CFLAGS) $(CFLAGS_FX) $(INCLUDE_FX)
-CFLAGSCG = $(CFLAGS) $(CFLAGS_CG) $(INCLUDE_CG)
 
-# Linker flags
-LDFLAGSFX := $(LDFLAGS) $(LDFLAGS_FX)
-LDFLAGSCG := $(LDFLAGS) $(LDFLAGS_CG)
 
-# Dependency list generation flags
-depflags = -MMD -MT $@ -MF $(@:.o=.d) -MP
-# ELF to binary flags
-BINFLAGS := -R .bss -R .gint_bss
+#---
+# Build rules
+#---
+# Make selects the first rule set when you type "make" but, in our case, we are
+# going to generate most of the rules. So, we set a placeholder to force the
+# "all" rule to be the "first" rule
+first: all
 
-# G1A and G3A generation flags
-NAME_G1A ?= $(NAME)
-NAME_G3A ?= $(NAME)
-G1AF := -i "$(ICON_FX)" -n "$(NAME_G1A)" --internal="$(INTERNAL)"
-G3AF := -n basic:"$(NAME_G3A)" -i uns:"$(ICON_CG_UNS)" -i sel:"$(ICON_CG_SEL)"
+# display the library version
+version:
+	@echo "$(MAJOR).$(MINOR).$(PATCH)$(EXTRAVERSION)"
 
-ifeq "$(TOOLCHAIN_FX)" ""
-TOOLCHAIN_FX := sh3eb-elf
+# Display helper
+help:
+	@ echo 'Rules listing:'
+	@ echo '... all         the default, if no target is provided'
+	@ echo '... clean       remove build object'
+	@ echo '... fclean      remove all generated object'
+	@ echo '... re          same as `make fclean all`'
+	@ echo '... version     display version'
+	@ echo '... install     install the library'
+	@ echo '... uninstall   uninstall the library'
+
+.PHONY: help version first
+
+
+
+
+#---
+#  Build configuration
+#---
+# Require configuration file
+CONFIG := gintrace.cfg
+ifeq "$(wildcard $(CONFIG))" ""
+$(error "config file $(CONFIG) does not exist (you should use `./configure`")
 endif
+include $(CONFIG)
 
-ifeq "$(TOOLCHAIN_CG)" ""
-TOOLCHAIN_CG := sh4eb-elf
-endif
+# color definition, for swagg :D
+red	:= \033[1;31m
+green	:= \033[1;32m
+blue	:= \033[1;34m
+white	:= \033[1;37m
+nocolor	:= \033[1;0m
 
-# fxconv flags
-FXCONVFX := --fx --toolchain=$(TOOLCHAIN_FX)
-FXCONVCG := --cg --toolchain=$(TOOLCHAIN_CG)
+# common information for FX platform
+FX_INCLUDE	:= -I include -I .
+FX_CFLAGS	:= -Wall -Wextra -Os
+
+# common information for CG platform
+CG_INCLUDE	:= -I include -I .
+CG_CFLAGS	:= -Wall -Wextra -Os
 
 # Determine the compiler install and include path
-GCC_BASE_FX := $(shell $(TOOLCHAIN_FX)-gcc --print-search-dirs | grep install | sed 's/install: //')
-GCC_BASE_CG := $(shell $(TOOLCHAIN_CG)-gcc --print-search-dirs | grep install | sed 's/install: //')
+GCC_BASE_FX := $(shell sh-elf-gcc --print-search-dirs | grep install | sed 's/install: //')
+GCC_BASE_CG := $(shell sh-elf-gcc --print-search-dirs | grep install | sed 's/install: //')
 GCC_INCLUDE_FX := $(GCC_BASE_FX)/include
 GCC_INCLUDE_CG := $(GCC_BASE_CG)/include
 
-#
-#  File listings
-#
 
-NULL   :=
-TARGET := $(subst $(NULL) $(NULL),-,$(NAME))
+#---
+# Generate building rules
+#---
+# This function will generate compilation rule for each sources.
+# @params:
+# *1 - source file pathname
+# *2 - build directory path (output)
+# *3 - C flags
+# *4 - compiler name
+# *5 - variable name (which store generated output filename)
+# *6 - workaround to remove unwanted pathname information (src or demo)
+# *7 - workaround to avoid undefined behaviour with $(eval $(call ...))
+define generate-compilation-rule
+# generate the rule name
+# @note:
+#   This is also the object filename, so to avoid multiple object filename
+#   generation, we save it into one variable that will be added to the given
+#   variable (arg $5), which list all object name.
+object-$7-filename	:= $(patsubst $6_%,$2/%.o,$(subst /,_,$(basename $1)))
 
-ifeq "$(TARGET_FX)" ""
-TARGET_FX := $(TARGET).g1a
+# generate the rules
+$$(object-$7-filename): $1
+ifeq ($(CONFIG.VERBOSE),true)
+	@ mkdir -p $$(dir $$@)
+	@ echo "$6 - $2 - $1"
+	$4 $3 -o $$@ -c $$<
+else
+	@ mkdir -p $$(dir $$@)
+	@ printf "$(green)>$(nocolor) $(white)$$@$(nocolor)\n"
+	@ $4 $3 -o $$@ -c $$<
 endif
 
-ifeq "$(TARGET_CG)" ""
-TARGET_CG := $(TARGET).g3a
+# update the object fileame list, used by the main rule
+$5	+= $$(object-$7-filename)
+endef
+
+# Function that will generate all rules for building each library.
+# @params:
+# *1 - format (dynamic/static)
+# *2 - platform (fx/cg)
+# *3 - source files list
+# *4 - library name (without extra information ("gintrace" not "gintrace.a"))
+# *5 - variable name (target list)
+define generate-target-library
+# generate common information
+tname				:= $4-$2
+target-$(tname)-build		:= build/library/$1/$2
+target-$(tname)-build-src	:= build/library/$1/$2
+
+# generate platform specific flags
+ifeq ($2,fx)
+	target-$(tname)-cflags	:= -D FX9860G -m3
+	target-$(tname)-cflags	+= $(FX_INCLUDE) $(FX_CFLAGS)
+endif
+ifeq ($2,cg)
+	target-$(tname)-cflags	:= -D FXCG50 -m4-nofpu
+	target-$(tname)-cflags	+= $(CG_INCLUDE) $(CG_CFLAGS)
 endif
 
-ELF_FX := build-fx/$(shell basename "$(TARGET_FX)" .g1a).elf
-BIN_FX := $(ELF_FX:.elf=.bin)
-
-ELF_CG := build-cg/$(shell basename "$(TARGET_CG)" .g3a).elf
-BIN_CG := $(ELF_CG:.elf=.bin)
-
-# Source files
-src       := $(wildcard src/*.[csS] \
-                        src/*/*.[csS] \
-                        src/*/*/*.[csS] \
-                        src/*/*/*/*.[csS])
-assets-fx := $(wildcard assets-fx/*/*)
-assets-cg := $(wildcard assets-cg/*/*)
-
-# Object files
-obj-fx  := $(src:%=build-fx/%.o) \
-           $(assets-fx:assets-fx/%=build-fx/assets/%.o)
-obj-cg  := $(src:%=build-cg/%.o) \
-           $(assets-cg:assets-cg/%=build-cg/assets/%.o)
-
-# Additional dependencies
-deps-fx := $(ICON_FX)
-deps-cg := $(ICON_CG_UNS) $(ICON_CG_SEL)
-
-# All targets
-all :=
-ifneq "$(wildcard build-fx)" ""
-all += all-fx
+# generate format-specific flags
+ifeq ($1,static)
+	target-$(tname)-ldflags	:=
+	target-$(tname)-cflags	+= -mb -ffreestanding -nostdlib
+	target-$(tname)-cflags	+= -fstrict-volatile-bitfields
+	target-$(tname)-exec	:= lib$4-$2.a
+	target-$(tname)-gcc	:= $(CONFIG.TOOLCHAIN)-gcc
+	target-$(tname)-ar	:= $(CONFIG.TOOLCHAIN)-ar
 endif
-ifneq "$(wildcard build-cg)" ""
-all += all-cg
+ifeq ($1,dynamic)
+	target-$(tname)-ldflags	:= -shared -T dynlib.ld
+	target-$(tname)-ldflags	+= -Wl,-Map=$$(target-$(tname)-build)/map
+	target-$(tname)-ldflags	+= -Wl,-soname=$4-$2
+	target-$(tname)-cflags	+= -mb -ffreestanding -nostdlib
+	target-$(tname)-cflags	+= -fstrict-volatile-bitfields -fPIC
+	target-$(tname)-exec	:= lib$4-$2-$(MAJOR).$(MINOR).$(PATCH).so
+	target-$(tname)-gcc	:= $(CONFIG.TOOLCHAIN)-gcc
+	target-$(tname)-ar	:= $(CONFIG.TOOLCHAIN)-ar
 endif
 
-#
-#  Build rules
-#
+# generate compilation rules and generate all object filename into the
+# object list variable, this will be used by the `main` rule
+target-$(tname)-obj	:=
+$$(foreach source,$3,$$(eval \
+	$$(call generate-compilation-rule,$$(source),\
+		$$(target-$(tname)-build-src),$$(target-$(tname)-cflags),\
+		$$(target-$(tname)-gcc),target-$(tname)-obj,src,$(tname))\
+))
 
-all: $(all)
+# Register the library building rule name
+# @note:
+# This rule list is used by the main compiling rule like a dependency. And it's
+# this dependency that will involve all generated rules for building each
+# libraries.
+$5 += $$(target-$(tname)-exec)
 
-all-fx: $(TARGET_FX)
-all-cg: $(TARGET_CG)
+# Generate the "linking" rule
+$$(target-$(tname)-exec): $$(target-$(tname)-obj)
+	@ mkdir -p $$(dir $$@)
+	@ printf "$(blue)Create the library $(red)$$@$(nocolor)\n"
+ifeq ($1,dynamic)
+	$$(target-$(tname)-gcc) $$(target-$(tname)-ldflags) \
+						-o $$@ $$^ -nostdlib -lgcc
+else
+	$$(target-$(tname)-ar) crs $$@ $$^
+endif
+endef
 
-$(TARGET_FX): $(obj-fx) $(deps-fx)
-	@ mkdir -p $(dir $@)
-	$(TOOLCHAIN_FX)-gcc -o $(ELF_FX) $(obj-fx) $(CFLAGSFX) $(LDFLAGSFX)
-	$(TOOLCHAIN_FX)-objcopy -O binary $(BINFLAGS) $(ELF_FX) $(BIN_FX)
-	fxg1a $(BIN_FX) -o $@ $(G1AF)
+# Function that will generate all rules for building each demo addin
+# @params:
+# *1 - platform (fx/cg)
+# *2 - source files list
+# *3 - library name (without extra information ("gintrace" not "gintrace.a"))
+# *4 - variable name (target list)
+define generate-target-demo
+# generate path information
+tname				:= $3-$1
+target-$(tname)-build		:= build/demo/$1
+target-$(tname)-build-src	:= build/demo/$1
 
-$(TARGET_CG): $(obj-cg) $(deps-cg)
-	@ mkdir -p $(dir $@)
-	$(TOOLCHAIN_CG)-gcc -o $(ELF_CG) $(obj-cg) $(CFLAGSCG) $(LDFLAGSCG)
-	$(TOOLCHAIN_CG)-objcopy -O binary $(BINFLAGS) $(ELF_CG) $(BIN_CG)
-	mkg3a $(G3AF) $(BIN_CG) $@
+# generate common information
+target-$(tname)-elf	:= $$(target-$(tname)-build)/$3-$1.elf
+target-$(tname)-bin	:= $$(target-$(tname)-build)/$3-$1.bin
+target-$(tname)-cflags	:= -mb -ffreestanding -nostdlib
+target-$(tname)-cflags	+= -fstrict-volatile-bitfields
+target-$(tname)-ldflags	:= -Wl,-Map=$$(target-$(tname)-build)/map
+target-$(tname)-gcc	:= $(CONFIG.TOOLCHAIN)-gcc
+target-$(tname)-objcopy	:= $(CONFIG.TOOLCHAIN)-objcopy
 
-# C sources
-build-fx/%.c.o: %.c
-	@ mkdir -p $(dir $@)
-	$(TOOLCHAIN_FX)-gcc -c $< -o $@ $(CFLAGSFX) $(depflags)
-build-cg/%.c.o: %.c
-	@ mkdir -p $(dir $@)
-	$(TOOLCHAIN_CG)-gcc -c $< -o $@ $(CFLAGSCG) $(depflags)
+# generate platform specific flags
+ifeq ($1,fx)
+	target-$(tname)-cflags	+= -D FX9860G -m3
+	target-$(tname)-ldflags	+= -T fx9860g.ld
+	target-$(tname)-libs	:= -L. -L $(GCC_INCLUDE_FX)
+	target-$(tname)-libs	+= -lgintrace-fx -lgint-fx -lgcc
+	target-$(tname)-exec	:= $3.g1a
+endif
+ifeq ($1,cg)
+	target-$(tname)-cflags	+= -D FXCG50 -m4-nofpu
+	target-$(tname)-ldflags	+= -T fxcg50.ld
+	target-$(tname)-libs	:= -L. -L $(GCC_INCLUDE_CG)
+	target-$(tname)-libs	+= -lgintrace-cg -lgint-cg -lgcc
+	target-$(tname)-exec	:= $3.g3a
+endif
 
-# Assembler sources
-build-fx/%.s.o: %.s
-	@ mkdir -p $(dir $@)
-	$(TOOLCHAIN_FX)-gcc -c $< -o $@
-build-cg/%.s.o: %.s
-	@ mkdir -p $(dir $@)
-	$(TOOLCHAIN_CG)-gcc -c $< -o $@
+# generate compilation rules and generate all object filename
+target-$(tname)-obj	:=
+$$(foreach source,$2,$$(eval \
+	$$(call generate-compilation-rule,$$(source),\
+		$$(target-$(tname)-build-src),$$(target-$(tname)-cflags),\
+		$$(target-$(tname)-gcc),target-$(tname)-obj,demo,$(tname))\
+))
 
-# Preprocessed assembler sources
-build-fx/%.S.o: %.S
-	@ mkdir -p $(dir $@)
-	$(TOOLCHAIN_FX)-gcc -c $< -o $@ $(INCLUDE_FX)
-build-cg/%.S.o: %.S
-	@ mkdir -p $(dir $@)
-	$(TOOLCHAIN_CG)-gcc -c $< -o $@ $(INCLUDE_CG)
+# Register the demo building rule name
+$4 += $$(target-$(tname)-exec)
 
-# Images
-build-fx/assets/img/%.o: assets-fx/img/%
-	@ mkdir -p $(dir $@)
-	fxconv --bopti-image $< -o $@ $(FXCONVFX) name:img_$(basename $*) $(IMG.$*)
-build-cg/assets/img/%.o: assets-cg/img/%
-	@ mkdir -p $(dir $@)
-	fxconv --bopti-image $< -o $@ $(FXCONVCG) name:img_$(basename $*) $(IMG.$*)
+# Generate the addin main rule
+$$(target-$(tname)-exec): $$(target-$(tname)-obj)
+	@ mkdir -p $$(dir $$@)
+	@ printf "$(blue)Create the demo addin $(red)$$@$(nocolor)\n"
+	$$(target-$(tname)-gcc) $$(target-$(tname)-cflags) \
+		$$(target-$(tname)-ldflags) -o $$(target-$(tname)-elf) \
+		$$(target-$(tname)-obj) $$(target-$(tname)-libs)
+	$$(target-$(tname)-objcopy) -O binary -R .bss -R .gint_bss \
+		$$(target-$(tname)-elf) $$(target-$(tname)-bin)
+ifeq ($1,fx)
+	fxg1a $$(target-$(tname)-bin) -o $$@ -i "assets/fx/icon-fx.png"
+else
+	mkg3a -n basic:"$3" -i uns:"assets/cg/icon-cg-uns.png" \
+		-i sel:"assets/cg/icon-cg-sel.png" $$(target-$(tname)-bin) $$@
+endif
+endef
 
-# Fonts
-build-fx/assets/fonts/%.o: assets-fx/fonts/%
-	@ mkdir -p $(dir $@)
-	fxconv -f $< -o $@ $(FXCONVFX) name:font_$(basename $*) $(FONT.$*)
-build-cg/assets/fonts/%.o: assets-cg/fonts/%
-	@ mkdir -p $(dir $@)
-	fxconv -f $< -o $@ $(FXCONVCG) name:font_$(basename $*) $(FONT.$*)
 
-# Binaries
-build-fx/assets/bin/%.o: assets-fx/bin/%
-	@ mkdir -p $(dir $@)
-	fxconv -b $< -o $@ $(FXCONVFX) name:bin_$(basename $*) $(BIN.$*)
-build-cg/assets/bin/%.o: assets-cg/bin/%
-	@ mkdir -p $(dir $@)
-	fxconv -b $< -o $@ $(FXCONVCG) name:bin_$(basename $*) $(BIN.$*)
 
-# Custom conversions
-build-fx/assets/%.o: assets-fx/%
-	@ mkdir -p $(dir $@)
-	fxconv --custom $< -o $@ $(FXCONVFX) type:$(subst /,,$(dir $*)) name:$(subst /,_,$(basename $*))
-build-cg/assets/%.o: assets-cg/%
-	@ mkdir -p $(dir $@)
-	fxconv --custom $< -o $@ $(FXCONVCG) type:$(subst /,,$(dir $*)) name:$(subst /,_,$(basename $*))
 
-#
-#  Cleaning and utilities
-#
+#---
+# Generate all building rules for the "library" part
+#---
+# find sources files
+target-lib-directory	:= $(shell find src -not -path "*/\.*" -type d)
+target-lib-src 		:= $(foreach path,$(target-lib-directory), \
+				$(wildcard $(path)/*.c) \
+				$(wildcard $(path)/*.S) \
+				$(wildcard $(path)/*.s))
 
-# Dependency information
--include $(shell find build* -name *.d 2> /dev/null)
-build-fx/%.d: ;
-build-cg/%.d: ;
-.PRECIOUS: build-fx build-cg build-fx/%.d build-cg/%.d %/
+# generate all library rules
+target-lib-list		:=
+$(foreach format,$(CONFIG.FORMAT),\
+	$(foreach platform,$(CONFIG.PLATFORM),$(eval \
+		$(call generate-target-library,$(format),$(platform),\
+			$(target-lib-src),gintrace,target-lib-list) \
+	))\
+)
 
-clean-fx:
-	@ rm -rf build-fx/
-clean-cg:
-	@ rm -rf build-cg/
+#---
+# Generate all building rules for the "demo" part, if requested
+#---
+target-demo_list	:=
+ifeq ($(CONFIG.DEMO),true)
+# find source files
+target-demo-directory	:= $(shell find demo -not -path "*/\.*" -type d)
+target-demo-src 	:= $(foreach path,$(target-demo-directory), \
+				$(wildcard $(path)/*.c) \
+				$(wildcard $(path)/*.S) \
+				$(wildcard $(path)/*.s))
 
-distclean-fx: clean-fx
-	@ rm -f $(TARGET_FX)
-distclean-cg: clean-cg
-	@ rm -f $(TARGET_CG)
+# generate all demo rules
+target-demo-list	:=
+$(foreach platform,$(CONFIG.PLATFORM),$(eval \
+	$(call generate-target-demo,$(platform),\
+			$(target-demo-src),gintrace,target-demo-list) \
+))
+endif
 
-clean: clean-fx clean-cg
 
-distclean: distclean-fx distclean-cg
 
-install-fx: $(TARGET_FX)
-	p7 send -f $<
-install-cg: $(TARGET_CG)
-	@ while [[ ! -h /dev/Prizm1 ]]; do sleep 0.25; done
-	@ while ! mount /dev/Prizm1; do sleep 0.25; done
-	@ rm -f /mnt/prizm/$<
-	@ cp $< /mnt/prizm
-	@ umount /dev/Prizm1
-	@- eject /dev/Prizm1
 
-.PHONY: all all-fx all-cg clean distclean install-fx install-cg
+#---
+# Build rules
+#---
+all: $(target-lib-list) $(target-demo-list)
+
+.PHONY: all
+
+
+
+
+#---
+# Generate installation rules (library only)
+#---
+# Common rules generated for the installation of each libraries.
+# Basically, it will generate <libname>-install and <libname>-uninstall rules
+# @note:
+# *1 - library pathname
+# *2 - variable name (installation rules list)
+# *3 - variable name (uninstallation rules list)
+define generate-install-rule
+# Generate the installation rule
+$(basename $(notdir $1))-install:
+	install -d $(CONFIG.PREFIX)
+	install $1 -m 644 $(CONFIG.PREFIX)
+
+# Generate the uninstallation rule
+$(basename $(notdir $1))-uninstall:
+	rm -f $(CONFIG.PREFIX)$(notdir $1)
+
+# Register generated rules into their appropriate list
+$2	+= $(basename $(notdir $1))-install
+$3	+= $(basename $(notdir $1))-uninstall
+endef
+
+# Generate all installation/uninstallation rules
+target-install-rules	:=
+target-uninstall-rules	:=
+$(foreach target,$(target-lib-list),$(eval \
+	$(call generate-install-rule,$(target),\
+				target-install-rules,target-uninstall-rules) \
+))
+
+# Generate the path where include directory will be installed.
+target-install-header-dir	:= $(CONFIG.PREFIX)include/
+ifeq ($(wildcard $(target-install-header-dir)gintrace/.*),)
+	target-install-header-dir	:= $(target-install-header-dir)gintrace
+endif
+
+
+
+
+#---
+# Installation rules
+#---
+install: $(target-list) $(target-install-rules)
+	cp -r include/gintrace/ $(target-install-header-dir)
+
+uninstall: $(target-uninstall-rules)
+	rm -rf $(CONFIG.PREFIX)include/gintrace
+
+
+
+
+#---
+# (internal) debug rule
+#---
+#target-list :=
+#DEBUG=$(call generate-target-library,static,fx,src/gui/menu.c,gintrace,target-list)
+##DEBUG=$(call generate-install-rule,/output/static/fxlibc.a)
+##DEBUG=$(call generate-target-demo,fx,demo/main.c,gintrace,target-list)
+##DEBUG=$(call generate-compilation-rule,demo/main.c,build/demo/fx,-Wall,sh-elf-gcc,target-list,demo)
+#export DEBUG
+#debug:
+#	@ echo "$$DEBUG"
+#	@ echo "target-lib: $(target-libs)"
+#	@ echo "generated lib: $(lib-generation-rules)"
+#	@ echo "target format: $(target-formats)"
+#	@ echo "install-rules: $(lib-installation-rules)"
+#	@ echo "uninstall-rules: $(lib-uninstallation-rules)"
+
+
+
+
+#---
+# cleaning rules
+#---
+clean:
+	rm -rf build
+fclean: clean
+	rm -rf $(target-lib-list) $(target-demo-list)
+re: fclean all
+
+.PHONY: install uninstall clean fclean re all

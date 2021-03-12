@@ -18,7 +18,7 @@ const char *dictionary_syscalls_check(void *address)
 	 * switch from user mode to privileged mode. They just jump always at
 	 * 0x80010070 and use the table of syscall addresses to redirect the
 	 * jump. (and the table address is always stored at 0x8001007c). */
-	 #ifdef FX9860
+	#ifdef FX9860G
 	systab = *(uint32_t **)0x8001007c;
 	#endif
 	#ifdef FXCG50
@@ -634,7 +634,7 @@ const struct sysname casio_syscalls[] = {
 };
 #endif /* FXCG50 */
 
-#ifdef FX9860
+#ifdef FX9860G
 const struct sysname casio_syscalls[] = {
 	//
 	// Simon Lothar

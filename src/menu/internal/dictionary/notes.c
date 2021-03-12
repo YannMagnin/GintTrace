@@ -27,7 +27,7 @@ static void dictionary_notes_init(void)
 #if FXCG50
 	void (*GetOSVersion)(char *buffer) = (*(void ***)0x8002007c)[0x1406];
 #endif
-#if FX9860
+#if FX9860G
 	void (*GetOSVersion)(char *buffer) = (*(void ***)0x8001007c)[0x2ee];
 #endif
 

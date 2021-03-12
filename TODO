@@ -3,6 +3,9 @@
 * fix fx9860 support
 
 @update
+* makefile: generate the demo
+* makefile: handle header dependencies
+* makefile: generate the documentation
 * context: refacto printXY() !
 * hexdump: search commands
 * callgraph: improve user interface.
@@ -13,5 +16,4 @@
 * icon
 
 @feature
-* transform gintracer into a librairy
-* handle session (send the session instead of ucontext !)
+* add documentation

@@ -1,0 +1,191 @@
+#! /bin/bash
+# Gint tracing library configuration script
+
+# output file
+confile='gintrace.cfg'
+
+# Build options
+toolchain=sh-elf
+prefix=
+
+# lib formats
+gen_platform_cg=false
+gen_platform_fx=false
+gen_format_static=false
+gen_format_dynamic=false
+gen_demo=false
+gen_verbose=false
+
+
+#---
+# Help screen
+#---
+help()
+{
+cat << EOF
+Configuration script for the Casio calculator tracer library for the Gint
+unikernel
+Usage: $0 [OPTION]...
+
+Build options:
+  --toolchain=TRIPLET  Build with a different toolchain (default: sh-elf-gcc)
+  --prefix=PREFIX      Installation prefix path. "PREFIX/lib" and
+                       "PREFIX/include" will be used. (default: we will ask
+                       your compiler)
+
+Select library format:
+  --format=<format>[,<format>]...
+      static    Generate static library (default)
+      dynamic   Generate dynamic library
+
+Specific calculator support:
+  --platform=<target>,<target>, ...
+    fx          Support monochrom caclulator (fx9860g)
+    cg          Support color calculator (fxcg50)
+    all         Same as "--platform=fx,cg"
+
+Other flags:
+  --help,-h     Display this help message.
+  --version     Display the librairy version.
+  --demo        Generate demo addins using the static librairy
+  --verbose     Makefile debug
+EOF
+  exit 0
+}
+
+#---
+# Check early help options
+#---
+if [[ $# -eq 1 ]] && [[ "$1" = "-h" ]] || [[ "$1" = "--help" ]]; then
+  help
+fi
+
+
+
+
+#---
+# Parsing arguments
+#---
+for arg; do case "$arg" in
+  # Help options
+  --help | -h)
+    help;;
+
+  # build options
+  --toolchain=*)
+    toolchain=${arg#*=};;
+  --prefix=*)
+    prefix=${arg#*=};;
+
+  # Specific platform
+  --platform=*)
+    IFS=',' read -ra target_platform <<< "${arg#*=}"
+    for platform in "${target_platform[@]}"; do case "$platform" in
+      all)
+        gen_platform_fx=true
+        gen_platform_cg=true;;
+      fx)
+        gen_platform_fx=true;;
+      cg)
+        gen_platform_cg=true;;
+      *)
+        echo "error: unreconized target '$format', giving up." >&2
+        exit 1
+    esac; done;;
+
+  # format support
+  --format=*)
+    IFS=',' read -ra target_format <<< "${arg#*=}"
+    for format in "${target_format[@]}"; do case "$format" in
+      all)
+        gen_format_static=true
+        gen_format_dynamic=true;;
+      static)
+        gen_format_static=true;;
+      dynamic)
+        gen_format_dynamic=true;;
+      *)
+        echo "error: unreconized target '$format', giving up." >&2
+        exit 1
+    esac; done;;
+
+  # other flags
+  --demo)
+    gen_format_static=true
+    gen_demo=true;;
+  --verbose)
+    gen_verbose=true;;
+
+  # error part
+  *)
+    echo "error: unreconized argument '$arg', giving up." >&2
+    exit 1
+esac; done
+
+
+#---
+# Check error
+#---
+# If no prefix is specified, install to the GCC's build folder
+if [[ -z "$prefix" ]]
+then
+  # ask the toolchain where is his installation path
+  echo "No prefix specified, let's ask the compiler:"
+  echo "  Call: \"$toolchain-gcc --print-search-dirs | grep install | sed 's/install: //'\""
+  if ! inst=$("$toolchain"-gcc --print-search-dirs | grep install | sed 's/install: //'); then
+    echo "  Call: returned $?, giving up." >&2
+    exit 1
+  fi
+  echo "  Got '$inst'".
+
+  # check if the directory exist
+  if [[ ! -d $inst ]]; then
+    echo "Directory does not exist (or is not a directory), giving up." >&2
+    exit 1
+  fi
+  prefix=$inst
+fi
+
+# if no specific calculator has been specified, set the defaut choice
+[ $gen_platform_fx = false ] && [ $gen_platform_cg = false ] && gen_platform_cg=true
+
+# if no format has been specified, set the default format
+[ $gen_format_static = false ] && [ $gen_format_dynamic = false ] && gen_format_static=true
+
+
+
+
+# TODO
+# TODO: check if the wanted lib exist (check lib verion too)!
+# TODO
+
+
+
+#---
+# Generate the configuration file
+#---
+generate_config()
+{
+  # build information
+  echo "CONFIG.TOOLCHAIN := $toolchain"
+  [[ "$prefix" ]] && echo "CONFIG.PREFIX := $prefix"
+
+  # Specific platform
+  echo 'CONFIG.PLATFORM :='
+  [ $gen_platform_fx = true ] && echo 'CONFIG.PLATFORM += fx'
+  [ $gen_platform_cg = true ] && echo 'CONFIG.PLATFORM += cg'
+
+  # formats
+  echo 'CONFIG.FORMAT :='
+  [ $gen_format_static  = true ] && echo 'CONFIG.FORMAT += static'
+  [ $gen_format_dynamic = true ] && echo 'CONFIG.FORMAT += dynamic'
+
+  # other
+  [ $gen_demo = true ] && echo 'CONFIG.DEMO := true'
+  [ $gen_verbose = true ] && echo 'CONFIG.VERBOSE := true'
+
+}
+generate_config > $confile
+
+echo "Configuration saved in $confile, ready to make!"
+exit 0

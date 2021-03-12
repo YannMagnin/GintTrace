@@ -515,7 +515,7 @@ static void disasm_command(struct tsession *session, int argc, char **argv)
 		#ifdef FXCG50
 		uintptr_t *systab = *(uintptr_t **)0x8002007c;
 		#endif
-		#ifdef FX9860
+		#ifdef FX9860G
 		uintptr_t *systab = *(uintptr_t **)0x8001007c;
 		#endif
 		if (idx == 2) {
