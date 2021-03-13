@@ -30,6 +30,10 @@ struct callgraph {
 	} cursor;
 	struct callnode *root;
 	struct callnode *parent;
+	struct {
+		uintptr_t breakpoint;
+		uintptr_t spc;
+	} special;
 };
 
 /* extern menu information */

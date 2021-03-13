@@ -71,6 +71,41 @@ int menu_unregister(struct menu_group *gmenu, const char *name)
 	return (menu_retval_unregistered);
 }
 
+/* menu_special_ctor(): Involve special contructor */
+int menu_special_ctor(struct menu_group *gmenu)
+{
+	struct menu_list *node;
+	int a;
+
+	if (gmenu == NULL)
+		return (menu_retval_efault);
+	a = 0;
+	node = gmenu->list;
+	while (node != NULL) {
+		if (node->menu != NULL && node->menu->special.ctor != NULL)
+			a += node->menu->special.ctor((void*)gmenu->arg);
+		node = node->next;
+	}
+	return (a);
+}
+/* menu_special_ctor(): Involve special contructor */
+int menu_special_dtor(struct menu_group *gmenu)
+{
+	struct menu_list *node;
+	int a;
+
+	if (gmenu == NULL)
+		return (menu_retval_efault);
+	a = 0;
+	node = gmenu->list;
+	while (node != NULL) {
+		if (node->menu != NULL && node->menu->special.dtor != NULL)
+			a += node->menu->special.dtor((void*)gmenu->arg);
+		node = node->next;
+	}
+	return (a);
+}
+
 /* menu_init(): Initialize all menu */
 int menu_init(struct menu_group *gmenu)
 {

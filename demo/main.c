@@ -44,7 +44,7 @@ int main(void)
 
 	/* prepare tracer */
 	session = tracer_create_session(syscall,
-			TRACER_DISASM | TRACER_CONTEXT | TRACER_HEXDUMP);
+			TRACER_DISASM | TRACER_CONTEXT | TRACER_HEXDUMP | TRACER_CALLGRAPH);
 	if (session == NULL) {
 		dclear(C_WHITE);
 		dtext(0, 0, C_BLACK, "Unable to create tracer session");

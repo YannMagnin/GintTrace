@@ -379,6 +379,42 @@ static void callgraph_command(struct tsession *session, int argc, char **argv)
 	input_write("success");
 }
 
+/* callgraph_special_ctor(): Special constructor used to generate the graph */
+static int callgraph_special_ctor(struct tsession *session)
+{
+	struct callgraph *callgraph = &session->menu.callgraph;
+
+	if (callgraph->special.breakpoint != 0x00000000
+	&& callgraph->special.spc != 0x00000000
+	&& callgraph->special.spc != callgraph->special.breakpoint) {
+		callgraph_init(session);
+		callgraph->special.spc = session->info.context->spc;
+		ubc_set_breakpoint(0, (void*)callgraph->special.spc, NULL);
+		return (1);
+	}
+	return (0);
+}
+
+/* callgraph_special_dtor(): Special destructor used to bypass the breakpoint*/
+//TODO: update, bad interconnection with the disasm menu :(
+static int callgraph_special_dtor(struct tsession *session)
+{
+	struct callgraph *callgraph = &session->menu.callgraph;
+	uintptr_t breakpoint;
+
+	breakpoint = session->menu.disasm.next_break;
+	if (session->menu.disasm.skip == 0) {
+		callgraph->special.spc = session->info.context->spc;
+		ubc_set_breakpoint(0, (void*)callgraph->special.spc, NULL);
+		callgraph->special.breakpoint = breakpoint;
+	} else {
+		callgraph->special.breakpoint = breakpoint;
+		ubc_set_breakpoint(0, (void*)breakpoint, NULL);
+		callgraph->special.spc = breakpoint;
+	}
+	return (1);
+}
+
 //---
 // Define the menu
 //---
@@ -388,5 +424,10 @@ struct menu menu_callgraph = {
 	.display  = (void*)&callgraph_display,
 	.keyboard = (void*)&callgraph_keyboard,
 	.command  = (void*)&callgraph_command,
-	.dtor     = NULL
+	.dtor     = NULL,
+
+	.special = {
+		.ctor	= (void*)&callgraph_special_ctor,
+		.dtor	= (void*)&callgraph_special_dtor,
+	}
 };

@@ -14,6 +14,11 @@ struct menu {
 	int  (*keyboard)(void *data, int key);
 	void (*command)(void *data, int argc, char **argv);
 	void (*dtor)(void *data);
+
+	struct {
+		int (*ctor)(void *data);
+		int (*dtor)(void *data);
+	} special;
 };
 
 /* menu group information */
@@ -54,6 +59,11 @@ extern int menu_unregister(struct menu_group *gmenus, const char *name);
 
 /* menu_is_open(): Return the menu status */
 extern int menu_is_open(struct menu_group *gmenu);
+
+/* menu_special_ctor(): Involve special contructor */
+extern int menu_special_ctor(struct menu_group *gmenu);
+/* menu_special_dtor(): Involve special destructor */
+extern int menu_special_dtor(struct menu_group *gmenu);
 
 /* menu_init(): Initialize all menu */
 extern int menu_init(struct menu_group *gmenus);

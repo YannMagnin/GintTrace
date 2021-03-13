@@ -17,6 +17,7 @@ struct tsession {
 		void *starting;
 		void *removed;
 		struct ucontext *context;
+		void *buffctx;
 	} info;
 
 	/* display information */
