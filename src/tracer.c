@@ -12,6 +12,7 @@ struct tsession *tracer_create_session(void *address, int menu)
 	extern void gintrace_handler(struct ucontext *context);
 	struct tsession *session;
 
+	/* check error */
 	if (address == NULL || (menu & (TRACER_DISASM
 					| TRACER_CONTEXT
 					| TRACER_HEXDUMP
@@ -19,6 +20,7 @@ struct tsession *tracer_create_session(void *address, int menu)
 		return(NULL);
 	}
 
+	/* try to create the session */
 	session = calloc(sizeof(struct tsession), 1);
 	if (session == NULL)
 		return (NULL);
@@ -35,6 +37,7 @@ struct tsession *tracer_create_session(void *address, int menu)
 	if ((menu & TRACER_CALLGRAPH) != 0)
 		menu_register(session->display.gmenu, &menu_callgraph, "CallG");
 
+	/* force install the UBC driver */
 	ubc_install();
 	ubc_set_handler(&gintrace_handler);
 	ubc_set_breakpoint(0, address, NULL);
@@ -53,6 +56,11 @@ struct tsession *tracer_set_session(struct tsession *new)
 	void *old;
 
 	old = session;
+	//FIXME: save current trace info
 	session = new;
+	//FIXME: restore current trace info
+	//ubc_install();
+	//ubc_set_handler(&gintrace_handler);
+	//ubc_set_breakpoint(0, address, NULL);
 	return (old);
 }

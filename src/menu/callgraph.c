@@ -14,6 +14,11 @@
 
 #include "./src/menu/internal/dictionary.h"
 
+/* internal info (TODO: move me) */
+extern void *kernel_env_gint;
+extern void *kernel_env_casio;
+extern void *gint_switch_to_world(void *buffctx);
+
 //---
 // callode management
 //---
@@ -321,11 +326,11 @@ static void callgraph_command(struct tsession *session, int argc, char **argv)
 
 	/* check if the file exist */
 	input_write_noint("Check if the file exist");
-	gint_switch_to_casio();
+	gint_switch_to_world(kernel_env_casio);
 	char line[256];
 	int fd = BFile_Open(pathname, BFile_ReadOnly);
 	if (fd >= 0) {
-		gint_switch_to_gint();
+		gint_switch_to_world(kernel_env_gint);
 		while (1) {
 			if (input_read(line, 3, "'%s' exist, erase ? [n/Y]:",
 							argv[1]) <= 0) {
@@ -338,39 +343,39 @@ static void callgraph_command(struct tsession *session, int argc, char **argv)
 			}
 			if (line[0] != 'Y')
 				continue;
-			gint_switch_to_casio();
+			gint_switch_to_world(kernel_env_casio);
 			BFile_Remove(pathname);
 			break;
 		}
 	}
 
 	/* create the file then dump information */
-	gint_switch_to_gint();
+	gint_switch_to_world(kernel_env_gint);
 	int size = callnode_export(-1, session->menu.callgraph.root, line);
 	input_write_noint("Create the file  (%d)", size);
-	gint_switch_to_casio();
+	gint_switch_to_world(kernel_env_casio);
 	fd = BFile_Create(pathname, BFile_File, &size);
 	if (fd != 0) {
-		gint_switch_to_gint();
+		gint_switch_to_world(kernel_env_gint);
 		input_write("Bfile_Create: error %d", fd);
 		return;
 	}
-	gint_switch_to_gint();
+	gint_switch_to_world(kernel_env_gint);
 	input_write_noint("Create success");
-	gint_switch_to_casio();
+	gint_switch_to_world(kernel_env_casio);
 	fd = BFile_Open(pathname, BFile_ReadWrite);
 	if (fd < 0) {
 		BFile_Remove(pathname);
-		gint_switch_to_gint();
+		gint_switch_to_world(kernel_env_gint);
 		input_write("BFile_Open: error %d", fd);
 		return;
 	}
-	gint_switch_to_gint();
+	gint_switch_to_world(kernel_env_gint);
 	input_write_noint("Open success, now write...");
-	gint_switch_to_casio();
+	gint_switch_to_world(kernel_env_casio);
 	callnode_export(fd, session->menu.callgraph.root, line);
 	BFile_Close(fd);
-	gint_switch_to_gint();
+	gint_switch_to_world(kernel_env_gint);
 	input_write("success");
 }
 

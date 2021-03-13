@@ -238,14 +238,14 @@ ifeq ($1,fx)
 	target-$(tname)-cflags	+= -D FX9860G -m3
 	target-$(tname)-ldflags	+= -T fx9860g.ld
 	target-$(tname)-libs	:= -L. -L $(GCC_INCLUDE_FX)
-	target-$(tname)-libs	+= -lgintrace-fx -lgint-fx -lgcc
+	target-$(tname)-libs	+=  -lgint-fx -lgintrace-fx -lgint-fx -lgcc
 	target-$(tname)-exec	:= $3.g1a
 endif
 ifeq ($1,cg)
 	target-$(tname)-cflags	+= -D FXCG50 -m4-nofpu
 	target-$(tname)-ldflags	+= -T fxcg50.ld
 	target-$(tname)-libs	:= -L. -L $(GCC_INCLUDE_CG)
-	target-$(tname)-libs	+= -lgintrace-cg -lgint-cg -lgcc
+	target-$(tname)-libs	+= -lgint-cg -lgintrace-cg -lgint-cg -lgcc
 	target-$(tname)-exec	:= $3.g3a
 endif
 

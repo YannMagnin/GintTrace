@@ -3,17 +3,19 @@
 * fix fx9860 support
 
 @update
-* makefile: generate the demo
 * makefile: handle header dependencies
+* makefile: handle dynamic lib generation
 * makefile: generate the documentation
 * context: refacto printXY() !
 * hexdump: search commands
 * callgraph: improve user interface.
-* disasm: set manually multiple breakpoint
-* savefile
-* load saved file
-* list color scheme on SMEM.
 * icon
 
 @feature
 * add documentation
+* switch to justUI
+* add drivers menu
+* savefile
+* load saved file
+* list color scheme on SMEM.
+* disasm: set manually multiple breakpoint

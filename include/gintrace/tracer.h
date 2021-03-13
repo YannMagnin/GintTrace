@@ -15,6 +15,7 @@ struct tsession {
 	/* session information */
 	struct {
 		void *starting;
+		void *removed;
 		struct ucontext *context;
 	} info;
 

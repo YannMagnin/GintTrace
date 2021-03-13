@@ -1,10 +1,15 @@
 #include "gintrace/ubc.h"
-#include <gint/mpu/power.h>
 
-/* internal saved driver state */
+#include <gint/mpu/power.h>
+#include <gint/drivers.h>
+
+/* internal UBC driver information */
 struct sh7305_ubc_context ubctx;
 void (*ubc_handler)(struct ucontext *ctx) = NULL;
 int ubc_driver_installed = 0;
+
+extern void *kernel_env_gint;
+void *kernel_env_tracer = NULL;
 
 
 /* ubc_install(): Install the UBC driver */
@@ -41,6 +46,10 @@ void ubc_install(void)
 	SH7305_UBC.CBR1.MFI = 0b000000;
 	SH7305_UBC.CBR1.CE = 0;
 	SH7305_UBC.CBCR.UBDE = 1;
+
+	/* generate the "tracer" tmp context */
+	if (kernel_env_tracer == NULL)
+		 drivers_context_duplicate(&kernel_env_tracer, kernel_env_gint);
 
 	/* indicate that the UBC driver is installed */
 	ubc_driver_installed = 1;
