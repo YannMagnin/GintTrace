@@ -38,6 +38,7 @@ struct tsession *tracer_create_session(void *address, int menu)
 		menu_register(session->display.gmenu, &menu_callgraph, "CallG");
 
 	/* force install the UBC driver */
+	//FIXME: move me into tracer_set_session !!
 	ubc_install();
 	ubc_set_handler(&gintrace_handler);
 	ubc_set_breakpoint(0, address, NULL);

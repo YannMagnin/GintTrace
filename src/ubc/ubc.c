@@ -58,17 +58,19 @@ void ubc_install(void)
 /* ubc_uninstall(): Uninstall the UBC driver */
 void ubc_uninstall(void)
 {
-	ubctx.cbr0  = SH7305_UBC.CBR0.lword;
-	ubctx.crr0  = SH7305_UBC.CRR0.lword;
-	ubctx.car0  = SH7305_UBC.CAR0;
-	ubctx.camr0 = SH7305_UBC.CAMR0;
-	ubctx.cbr1  = SH7305_UBC.CBR1.lword;
-	ubctx.crr1  = SH7305_UBC.CRR1.lword;
-	ubctx.car1  = SH7305_UBC.CAR1;
-	ubctx.camr1 = SH7305_UBC.CAMR1;
-	ubctx.cdr1  = SH7305_UBC.CDR1;
-	ubctx.cdmr1 = SH7305_UBC.CDMR1;
-	ubctx.cdr1  = SH7305_UBC.CETR1.lword;
+	if (ubc_driver_installed == 1) {
+		ubctx.cbr0  = SH7305_UBC.CBR0.lword;
+		ubctx.crr0  = SH7305_UBC.CRR0.lword;
+		ubctx.car0  = SH7305_UBC.CAR0;
+		ubctx.camr0 = SH7305_UBC.CAMR0;
+		ubctx.cbr1  = SH7305_UBC.CBR1.lword;
+		ubctx.crr1  = SH7305_UBC.CRR1.lword;
+		ubctx.car1  = SH7305_UBC.CAR1;
+		ubctx.camr1 = SH7305_UBC.CAMR1;
+		ubctx.cdr1  = SH7305_UBC.CDR1;
+		ubctx.cdmr1 = SH7305_UBC.CDMR1;
+		ubctx.cdr1  = SH7305_UBC.CETR1.lword;
+	}
 }
 
 /* ubc_set_breakpoint(): Setup one breakpoint */
