@@ -14,11 +14,6 @@
 
 #include "./src/menu/internal/dictionary.h"
 
-/* internal info (TODO: move me) */
-extern void *kernel_env_gint;
-extern void *kernel_env_casio;
-extern void *gint_switch_to_world(void *buffctx);
-
 //---
 // callode management
 //---
@@ -311,11 +306,12 @@ static void callgraph_command(struct tsession *session, int argc, char **argv)
 		input_write("argument missing");
 		return;
 	}
-	if (strcmp(argv[0], "export") != 0) {
+	//if (strcmp(argv[0], "export") != 0) {
 		input_write("'%s': command unknown", argv[0]);
-		return;
-	}
+	//	return;
+	//}
 
+#if 0
 	/* convert the filename (arg2) into Bfile pathname */
 	int i = -1;
 	uint16_t pathname[14 + strlen(argv[1]) + 1];
@@ -377,6 +373,7 @@ static void callgraph_command(struct tsession *session, int argc, char **argv)
 	BFile_Close(fd);
 	gint_switch_to_world(kernel_env_gint);
 	input_write("success");
+#endif
 }
 
 /* callgraph_special_ctor(): Special constructor used to generate the graph */

@@ -1,5 +1,6 @@
 #include "gintrace/tracer.h"
 
+
 #include <gint/bfile.h>
 #include <gint/display.h>
 #include <gint/keyboard.h>
@@ -36,15 +37,22 @@ int main(void)
 	}
 #endif
 
+#ifdef FXCG50
 	/* get syscall address */
 	systab = *(void ***)0x8002007c;
-	//syscall = systab[0x1e48];	// Fugue_debug_menu
-	syscall = systab[0x1da3];	// Bfile_OpenFile_OS
-
+	//syscall = systab[0x1e48];	// Fugue_debug_menu()
+	//syscall = systab[0x1da3];	// Bfile_OpenFile_OS()
+	//syscall = systab[0x1353];	// Comm_Open()
+	//syscall = systab[0x1dac];	// Bfile_ReadFile_OS()
+	syscall = systab[0x1630];	// App_optimize()
+	//syscall = systab[0x1e56];
+#endif
 
 	/* prepare tracer */
-	session = tracer_create_session(syscall,
-			TRACER_DISASM | TRACER_CONTEXT | TRACER_HEXDUMP | TRACER_CALLGRAPH);
+	session = tracer_create_session(
+		syscall,
+		TRACER_DISASM | TRACER_CONTEXT | TRACER_HEXDUMP
+	);
 	if (session == NULL) {
 		dclear(C_WHITE);
 		dtext(0, 0, C_BLACK, "Unable to create tracer session");
@@ -59,12 +67,24 @@ int main(void)
 	//---
 	// TEST part
 	//---
-	void (*bfile_openfile_os)(const uint16_t *filename, int mode, int p3);
+	void (*app_optimize)(void) = (void*)syscall;
+	gint_world_switch(GINT_CALL(app_optimize));
+
+
+#if 0
+	int (*bfile_openfile_os)(const uint16_t *filename, int mode, int p3);
+	int (*bfile_readfile_os)(int handle, void *b, size_t n, off_t p);
+	//void (*comm_open)(int mode) = syscall;
+	uint8_t buffer[128];
+	int handle;
 
 	gint_switch_to_world(kernel_env_casio);
-	bfile_openfile_os = syscall;
-	bfile_openfile_os(u"\\\\fls0\\abcdefgijklmn", BFile_ReadOnly, 0);
+	bfile_openfile_os = systab[0x1da3];
+	handle = bfile_openfile_os(u"\\\\fls0\\azerty", BFile_ReadOnly, 0);
+	bfile_readfile_os = systab[0x1dac];
+	bfile_readfile_os(handle, buffer, 128, 0);
 	gint_switch_to_world(kernel_env_gint);
+#endif
 
 
 

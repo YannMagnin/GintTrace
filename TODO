@@ -3,15 +3,17 @@
 * fix fx9860 support
 
 @update
+* session: add custom world in each session
 * makefile: handle header dependencies
 * makefile: handle dynamic lib generation
 * makefile: generate the documentation
 * context: refacto printXY() !
 * hexdump: search commands
 * callgraph: improve user interface.
-* icon
 
 @feature
+* be compilent with giteapc
+* switch to cmake
 * add documentation
 * switch to justUI
 * add drivers menu

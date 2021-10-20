@@ -615,17 +615,33 @@ const struct sysname casio_syscalls[] = {
 	//
 	// Yatis
 	//
+	{.syscall = 0x0dc0, .name = "void SMEM_Optimize(void)"},
+	{.syscall = 0x0dd2, .name = "int SMEM_fugue_retval_to_bfile_revet(int retval);"},
+	{.syscall = 0x0de2, .name = "int SMEM_bfile_get_file_info(int handle, uint8_t buffer[540]);"},
 	{.syscall = 0x0db0, .name = "int fugue_unmount(void);"},
 	{.syscall = 0x0db1, .name = "int fugue_mount(void);"},
 	{.syscall = 0x0dd2, .name = "const uint16_t *FONTCHARACTER_convert_to_FUGUECHARACTER(const uint16_t *src, uint8_t *dest);"},
+	{.syscall = 0x0de2, .name = "int SMEM_get_file_info(int handle, uint8_t buffer[540]);"},
 	{.syscall = 0x0ea6, .name = "void Debug_menu_TestMode(void);"},
 	{.syscall = 0x0ea7, .name = "void Debug_menu_TestMode(int unknown);"},
-	{.syscall = 0x1da1, .name = "int fugue_logical_format(void);"},
+	{.syscall = 0x134e, .name = "int USB_Open(int param);"},
+	{.syscall = 0x135d, .name = "int Comm_IsOpen(void);"},
+	{.syscall = 0x135e, .name = "int Comm_GetCurrentSelector(void);"},
+	{.syscall = 0x135f, .name = "int Comm_OS_wait(int delay_ms);"},
+	{.syscall = 0x1361, .name = "int Serial_Reset(int action);"},
+	{.syscall = 0x14ba, .name = "int USB_PowerOn(void);"},
+	{.syscall = 0x14bb, .name = "int USB_PowerOff(void);"},
+	{.syscall = 0x1da1, .name = "int SMEM_logical_format(void *unknown, int mode, int unknown);"},
 	{.syscall = 0x1e44, .name = "void Debug_menu_FileSystem(void);"},
 	{.syscall = 0x1e45, .name = "void Debug_menu_Fugue_OpenFileInfo(void);"},
 	{.syscall = 0x1e48, .name = "void Debug_menu_Fugue_VolumeInfo(void);"},
 	{.syscall = 0x1e49, .name = "void Debug_menu_Fugue_LogInfo(void);"},
 	{.syscall = 0x1e66, .name = "void Debug_menu_stackAndHeap(void);"},
+	{.syscall = 0x1ece, .name = "void USB_InterruptHandler(void);"},
+	{.syscall = 0x1d99, .name = "int SD_isMounted(void);"},
+	{.syscall = 0x1dc3, .name = "int Bfile_Optimize(const uint16_t *device);"},
+	{.syscall = 0x1263, .name = "int SD_read(int handle, void *buffer, size_t nb, off_t pos);"},
+	{.syscall = 0x1267, .name = "int SD_optimize(void);"},
 
 	//
 	// Stop

@@ -6,9 +6,7 @@
 #include "gintrace/ubc.h"
 #include "gintrace/tracer.h"
 
-/* world information */
-extern void *kernel_env_tracer;
-extern void *gint_switch_to_world(void *buffctx);
+#include <gint/drivers.h>
 
 /* gintrac_handler(): UBC handler
  * @note:
@@ -40,7 +38,7 @@ void gintrace_handler(struct ucontext *context)
 	}
 
 	/* user break point */
-	session->info.buffctx = gint_switch_to_world(kernel_env_tracer);
+	gint_world_switch_in(gint_world_os, gint_world_addin);
 	menu_init(session->display.gmenu);
 	while (menu_is_open(session->display.gmenu) == 0) {
 		menu_draw(session->display.gmenu);
@@ -56,5 +54,5 @@ void gintrace_handler(struct ucontext *context)
 
 	/* unblock UBC interrupt */
 	ubc_unblock();
-	gint_switch_to_world(session->info.buffctx);
+	gint_world_switch_out(gint_world_addin, gint_world_os);
 }

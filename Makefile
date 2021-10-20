@@ -38,7 +38,7 @@
 #
 #---
 MAJOR	:= 0
-MINOR	:= 8
+MINOR	:= 9
 PATCH	:= 0
 EXTRAVERSION	:=
 
@@ -236,16 +236,18 @@ target-$(tname)-objcopy	:= $(CONFIG.TOOLCHAIN)-objcopy
 # generate platform specific flags
 ifeq ($1,fx)
 	target-$(tname)-cflags	+= -D FX9860G -m3
+	target-$(tname)-cflags	+= $(FX_INCLUDE) $(FX_CFLAGS)
 	target-$(tname)-ldflags	+= -T fx9860g.ld
 	target-$(tname)-libs	:= -L. -L $(GCC_INCLUDE_FX)
-	target-$(tname)-libs	+=  -lgint-fx -lgintrace-fx -lgint-fx -lgcc
+	target-$(tname)-libs	+=  -lgint-fx -lgintrace-fx -lgint-fx -lc -lgcc
 	target-$(tname)-exec	:= $3.g1a
 endif
 ifeq ($1,cg)
 	target-$(tname)-cflags	+= -D FXCG50 -m4-nofpu
+	target-$(tname)-cflags	+= $(CG_INCLUDE) $(CG_CFLAGS)
 	target-$(tname)-ldflags	+= -T fxcg50.ld
 	target-$(tname)-libs	:= -L. -L $(GCC_INCLUDE_CG)
-	target-$(tname)-libs	+= -lgint-cg -lgintrace-cg -lgint-cg -lgcc
+	target-$(tname)-libs	+= -lgint-cg -lgintrace-cg -lgint-cg -lc -lgcc
 	target-$(tname)-exec	:= $3.g3a
 endif
 

@@ -57,11 +57,15 @@ static void context_ctor(struct tsession *session)
 /* context_display(); Display trace information */
 static void context_display(struct tsession *session)
 {
+	uintptr_t __vbr;
 	int x;
 	int y;
 
+	__asm__ volatile ("stc vbr, %0": "=r"(__vbr)::);
+
 	x = session->menu.context.cursor.hoffset;
 	y = session->menu.context.cursor.voffset;
+	printXY(0 + x, 0 + y, "vbr  : %p", __vbr);
 	printXY(0 + x, 0 + y, "gbr  : %p", session->info.context->gbr);
 	printXY(0 + x, 1 + y, "macl : %p", session->info.context->mach);
 	printXY(0 + x, 2 + y, "mach : %p", session->info.context->macl);

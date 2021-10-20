@@ -6,6 +6,9 @@
 /* global session  (TODO: thread-safe) */
 struct tsession *session = NULL;
 
+//TODO: ELF PIE world
+//TODO: custom world selection
+
 /* tracer_new_session(): Create a new session */
 struct tsession *tracer_create_session(void *address, int menu)
 {

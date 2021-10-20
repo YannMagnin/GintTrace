@@ -83,8 +83,8 @@ ubc_kernel_inth_prologue:
 	lds.l	@r15+, pr
 
 	! Clean exit.
-	rte				! Interrupt Exit.
-	nop				! (db) Safety first.
+	rte
+	nop
 
 .align 4
 ubc_handler:	.long _ubc_handler
