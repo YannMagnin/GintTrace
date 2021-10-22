@@ -178,6 +178,7 @@ int menu_keyboard(struct menu_group *gmenu)
 
 	if (gmenu == NULL)
 		return (menu_retval_efault);
+	clearevents();
 	key = getkey().key;
 	if (key == KEY_0) {
 		gcolor_scheme_change();

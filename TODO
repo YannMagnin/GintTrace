@@ -3,21 +3,23 @@
 * fix fx9860 support
 
 @update
-* session: add custom world in each session
+* makefile: change for `mkdir build && cd build && ../configure && make`
 * makefile: handle header dependencies
 * makefile: handle dynamic lib generation
 * makefile: generate the documentation
 * context: refacto printXY() !
 * hexdump: search commands
 * callgraph: improve user interface.
+* session: switch between multiple session
+* session: add custom world in each session
 
 @feature
 * be compilent with giteapc
-* switch to cmake
 * add documentation
 * switch to justUI
-* add drivers menu
-* savefile
-* load saved file
+* add world menu
+* save tracing file
+* load saved tracing file
 * list color scheme on SMEM.
 * disasm: set manually multiple breakpoint
+* disasm: display pipeline ILP information

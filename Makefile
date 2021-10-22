@@ -39,7 +39,7 @@
 #---
 MAJOR	:= 0
 MINOR	:= 9
-PATCH	:= 0
+PATCH	:= 1
 EXTRAVERSION	:=
 
 
