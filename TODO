@@ -3,7 +3,6 @@
 * fix fx9860 support
 
 @update
-* makefile: change for `mkdir build && cd build && ../configure && make`
 * makefile: handle header dependencies
 * makefile: handle dynamic lib generation
 * makefile: generate the documentation

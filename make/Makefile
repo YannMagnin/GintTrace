@@ -38,8 +38,8 @@
 #
 #---
 MAJOR	:= 0
-MINOR	:= 9
-PATCH	:= 1
+MINOR	:= 10
+PATCH	:= 0
 EXTRAVERSION	:=
 
 
@@ -91,11 +91,11 @@ white	:= \033[1;37m
 nocolor	:= \033[1;0m
 
 # common information for FX platform
-FX_INCLUDE	:= -I include -I .
+FX_INCLUDE	:= -I ../include -I ..
 FX_CFLAGS	:= -Wall -Wextra -Os
 
 # common information for CG platform
-CG_INCLUDE	:= -I include -I .
+CG_INCLUDE	:= -I ../include -I ..
 CG_CFLAGS	:= -Wall -Wextra -Os
 
 # Determine the compiler install and include path
@@ -123,7 +123,7 @@ define generate-compilation-rule
 #   This is also the object filename, so to avoid multiple object filename
 #   generation, we save it into one variable that will be added to the given
 #   variable (arg $5), which list all object name.
-object-$7-filename	:= $(patsubst $6_%,$2/%.o,$(subst /,_,$(basename $1)))
+object-$7-filename	:= $(patsubst .._$6_%,$2/%.o,$(subst /,_,$(basename $1)))
 
 # generate the rules
 $$(object-$7-filename): $1
@@ -151,8 +151,8 @@ endef
 define generate-target-library
 # generate common information
 tname				:= $4-$2
-target-$(tname)-build		:= build/library/$1/$2
-target-$(tname)-build-src	:= build/library/$1/$2
+target-$(tname)-build		:= library/$1/$2
+target-$(tname)-build-src	:= library/$1/$2
 
 # generate platform specific flags
 ifeq ($2,fx)
@@ -170,8 +170,8 @@ ifeq ($1,static)
 	target-$(tname)-cflags	+= -mb -ffreestanding -nostdlib
 	target-$(tname)-cflags	+= -fstrict-volatile-bitfields
 	target-$(tname)-exec	:= lib$4-$2.a
-	target-$(tname)-gcc	:= $(CONFIG.TOOLCHAIN)-gcc
-	target-$(tname)-ar	:= $(CONFIG.TOOLCHAIN)-ar
+	target-$(tname)-gcc	:= $(CONFIG.TOOLCHAIN)gcc
+	target-$(tname)-ar	:= $(CONFIG.TOOLCHAIN)ar
 endif
 ifeq ($1,dynamic)
 	target-$(tname)-ldflags	:= -shared -T dynlib.ld
@@ -180,8 +180,8 @@ ifeq ($1,dynamic)
 	target-$(tname)-cflags	+= -mb -ffreestanding -nostdlib
 	target-$(tname)-cflags	+= -fstrict-volatile-bitfields -fPIC
 	target-$(tname)-exec	:= lib$4-$2-$(MAJOR).$(MINOR).$(PATCH).so
-	target-$(tname)-gcc	:= $(CONFIG.TOOLCHAIN)-gcc
-	target-$(tname)-ar	:= $(CONFIG.TOOLCHAIN)-ar
+	target-$(tname)-gcc	:= $(CONFIG.TOOLCHAIN)gcc
+	target-$(tname)-ar	:= $(CONFIG.TOOLCHAIN)ar
 endif
 
 # generate compilation rules and generate all object filename into the
@@ -221,8 +221,8 @@ endef
 define generate-target-demo
 # generate path information
 tname				:= $3-$1
-target-$(tname)-build		:= build/demo/$1
-target-$(tname)-build-src	:= build/demo/$1
+target-$(tname)-build		:= demo/$1
+target-$(tname)-build-src	:= demo/$1
 
 # generate common information
 target-$(tname)-elf	:= $$(target-$(tname)-build)/$3-$1.elf
@@ -230,8 +230,8 @@ target-$(tname)-bin	:= $$(target-$(tname)-build)/$3-$1.bin
 target-$(tname)-cflags	:= -mb -ffreestanding -nostdlib
 target-$(tname)-cflags	+= -fstrict-volatile-bitfields
 target-$(tname)-ldflags	:= -Wl,-Map=$$(target-$(tname)-build)/map
-target-$(tname)-gcc	:= $(CONFIG.TOOLCHAIN)-gcc
-target-$(tname)-objcopy	:= $(CONFIG.TOOLCHAIN)-objcopy
+target-$(tname)-gcc	:= $(CONFIG.TOOLCHAIN)gcc
+target-$(tname)-objcopy	:= $(CONFIG.TOOLCHAIN)objcopy
 
 # generate platform specific flags
 ifeq ($1,fx)
@@ -274,8 +274,8 @@ $$(target-$(tname)-exec): $$(target-$(tname)-obj)
 ifeq ($1,fx)
 	fxg1a $$(target-$(tname)-bin) -o $$@ -i "assets/fx/icon-fx.png"
 else
-	mkg3a -n basic:"$3" -i uns:"assets/cg/icon-cg-uns.png" \
-		-i sel:"assets/cg/icon-cg-sel.png" $$(target-$(tname)-bin) $$@
+	mkg3a -n basic:"$3" -i uns:"../assets/cg/icon-cg-uns.png" \
+		-i sel:"../assets/cg/icon-cg-sel.png" $$(target-$(tname)-bin) $$@
 endif
 endef
 
@@ -286,7 +286,7 @@ endef
 # Generate all building rules for the "library" part
 #---
 # find sources files
-target-lib-directory	:= $(shell find src -not -path "*/\.*" -type d)
+target-lib-directory	:= $(shell find ../src -not -path "*/\.*" -type d)
 target-lib-src 		:= $(foreach path,$(target-lib-directory), \
 				$(wildcard $(path)/*.c) \
 				$(wildcard $(path)/*.S) \
@@ -307,7 +307,7 @@ $(foreach format,$(CONFIG.FORMAT),\
 target-demo_list	:=
 ifeq ($(CONFIG.DEMO),true)
 # find source files
-target-demo-directory	:= $(shell find demo -not -path "*/\.*" -type d)
+target-demo-directory	:= $(shell find ../demo -not -path "*/\.*" -type d)
 target-demo-src 	:= $(foreach path,$(target-demo-directory), \
 				$(wildcard $(path)/*.c) \
 				$(wildcard $(path)/*.S) \
@@ -388,30 +388,10 @@ uninstall: $(target-uninstall-rules)
 
 
 #---
-# (internal) debug rule
-#---
-#target-list :=
-#DEBUG=$(call generate-target-library,static,fx,src/gui/menu.c,gintrace,target-list)
-##DEBUG=$(call generate-install-rule,/output/static/fxlibc.a)
-##DEBUG=$(call generate-target-demo,fx,demo/main.c,gintrace,target-list)
-##DEBUG=$(call generate-compilation-rule,demo/main.c,build/demo/fx,-Wall,sh-elf-gcc,target-list,demo)
-#export DEBUG
-#debug:
-#	@ echo "$$DEBUG"
-#	@ echo "target-lib: $(target-libs)"
-#	@ echo "generated lib: $(lib-generation-rules)"
-#	@ echo "target format: $(target-formats)"
-#	@ echo "install-rules: $(lib-installation-rules)"
-#	@ echo "uninstall-rules: $(lib-uninstallation-rules)"
-
-
-
-
-#---
 # cleaning rules
 #---
 clean:
-	rm -rf build
+	rm -rf demo library
 fclean: clean
 	rm -rf $(target-lib-list) $(target-demo-list)
 re: fclean all

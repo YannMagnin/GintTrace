@@ -17,26 +17,6 @@ int main(void)
 	void **systab;
 	void *syscall;
 
-#if 0
-	int x = 0;
-	int key = 0;
-	while (1) {
-		dclear(C_WHITE);
-		dtext(0, 0, C_BLACK, "Unable to create tracer session");
-		dtext(0, 10, C_BLACK, "Press [MENU]...");
-		dprint(x, 20, C_BLACK, "buffctx:  %p", drivers_get_current());
-		dprint(x, 30, C_BLACK, "gintctx:  %p", kernel_env_gint);
-		dprint(x, 40, C_BLACK, "casioctx: %p", kernel_env_casio);
-		dupdate();
-
-		key = getkey().key;
-		if (key == KEY_LEFT)
-			x = x + 10;
-		if (key == KEY_RIGHT)
-			x = x - 10;
-	}
-#endif
-
 #ifdef FXCG50
 	/* get syscall address */
 	systab = *(void ***)0x8002007c;
@@ -46,6 +26,10 @@ int main(void)
 	//syscall = systab[0x1dac];	// Bfile_ReadFile_OS()
 	syscall = systab[0x1630];	// App_optimize()
 	//syscall = systab[0x1e56];
+#endif
+#ifdef FX9860G
+	systab = *(void ***)0x8001007c;
+	syscall = systab[0x90f];		// getkey()
 #endif
 
 	/* prepare tracer */

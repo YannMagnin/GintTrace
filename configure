@@ -5,7 +5,7 @@
 confile='gintrace.cfg'
 
 # Build options
-toolchain=sh-elf
+toolchain=sh-elf-
 prefix=
 
 # lib formats
@@ -28,7 +28,7 @@ unikernel
 Usage: $0 [OPTION]...
 
 Build options:
-  --toolchain=TRIPLET  Build with a different toolchain (default: sh-elf-gcc)
+  --toolchain=TRIPLET  Build with a different toolchain (default: sh-elf-)
   --prefix=PREFIX      Installation prefix path. "PREFIX/lib" and
                        "PREFIX/include" will be used. (default: we will ask
                        your compiler)
@@ -61,6 +61,14 @@ if [[ $# -eq 1 ]] && [[ "$1" = "-h" ]] || [[ "$1" = "--help" ]]; then
 fi
 
 
+#---
+# Check configuration location
+#---
+if [[ -f make/Makefile ]]; then
+  echo "error: you should configure from a build directory, like this:" >&2
+  echo "  mkdir build && cd build && ../configure [options..]" >&2
+  exit 1
+fi
 
 
 #---
@@ -71,7 +79,7 @@ for arg; do case "$arg" in
   --help | -h)
     help;;
 
-  # build options
+  # Build options
   --toolchain=*)
     toolchain=${arg#*=};;
   --prefix=*)
@@ -89,7 +97,7 @@ for arg; do case "$arg" in
       cg)
         gen_platform_cg=true;;
       *)
-        echo "error: unreconized target '$format', giving up." >&2
+        echo "error: unreconized target '$platform', giving up." >&2
         exit 1
     esac; done;;
 
@@ -105,7 +113,7 @@ for arg; do case "$arg" in
       dynamic)
         gen_format_dynamic=true;;
       *)
-        echo "error: unreconized target '$format', giving up." >&2
+        echo "error: unreconized format '$format', giving up." >&2
         exit 1
     esac; done;;
 
@@ -131,8 +139,8 @@ if [[ -z "$prefix" ]]
 then
   # ask the toolchain where is his installation path
   echo "No prefix specified, let's ask the compiler:"
-  echo "  Call: \"$toolchain-gcc --print-search-dirs | grep install | sed 's/install: //'\""
-  if ! inst=$("$toolchain"-gcc --print-search-dirs | grep install | sed 's/install: //'); then
+  echo "  Call: \""$toolchain"gcc --print-search-dirs | grep install | sed 's/install: //'\""
+  if ! inst=$("$toolchain"gcc --print-search-dirs | grep install | sed 's/install: //'); then
     echo "  Call: returned $?, giving up." >&2
     exit 1
   fi
@@ -153,12 +161,9 @@ fi
 [ $gen_format_static = false ] && [ $gen_format_dynamic = false ] && gen_format_static=true
 
 
-
-
 # TODO
 # TODO: check if the wanted lib exist (check lib verion too)!
 # TODO
-
 
 
 #---
@@ -186,6 +191,14 @@ generate_config()
 
 }
 generate_config > $confile
+
+
+src="Makefile"
+dst="../make/Makefile"
+
+[[ -L $src && $(readlink $src) == $dst ]] && rm $src
+ln -s $dst $src
+
 
 echo "Configuration saved in $confile, ready to make!"
 exit 0
