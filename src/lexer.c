@@ -2,8 +2,8 @@
 //	fxBoot:lexer - lexer used to generate ARGC and ARGV
 //---
 #include "gintrace/lexer.h"
-#include <gint/std/stdlib.h>
-#include <gint/std/string.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* define external symbols */
 extern int lexer_strtotab(int *argc, char ***argv, char const *str);

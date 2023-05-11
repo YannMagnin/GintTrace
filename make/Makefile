@@ -247,7 +247,7 @@ ifeq ($1,cg)
 	target-$(tname)-cflags	+= $(CG_INCLUDE) $(CG_CFLAGS)
 	target-$(tname)-ldflags	+= -T fxcg50.ld
 	target-$(tname)-libs	:= -L. -L $(GCC_INCLUDE_CG)
-	target-$(tname)-libs	+= -lgint-cg -lgintrace-cg -lgint-cg -lc -lgcc
+	target-$(tname)-libs	+= -lgint-cg -lgintrace-cg -lgint-cg -lc -lgint-cg -lgcc
 	target-$(tname)-exec	:= $3.g3a
 endif
 

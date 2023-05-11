@@ -24,8 +24,9 @@ int main(void)
 	//syscall = systab[0x1da3];	// Bfile_OpenFile_OS()
 	//syscall = systab[0x1353];	// Comm_Open()
 	//syscall = systab[0x1dac];	// Bfile_ReadFile_OS()
-	syscall = systab[0x1630];	// App_optimize()
+	//syscall = systab[0x1630];	// App_optimize()
 	//syscall = systab[0x1e56];
+	syscall = systab[0x0d9f];	// SMEM_fugue_FS_???(int mode)
 #endif
 #ifdef FX9860G
 	systab = *(void ***)0x8001007c;
@@ -51,11 +52,13 @@ int main(void)
 	//---
 	// TEST part
 	//---
+	int (*smem_fugue_unknown)(int mode) = (void *)syscall;
+	gint_world_switch(GINT_CALL(smem_fugue_unknown, -2));
+
+#if 0
 	void (*app_optimize)(void) = (void*)syscall;
 	gint_world_switch(GINT_CALL(app_optimize));
 
-
-#if 0
 	int (*bfile_openfile_os)(const uint16_t *filename, int mode, int p3);
 	int (*bfile_readfile_os)(int handle, void *b, size_t n, off_t p);
 	//void (*comm_open)(int mode) = syscall;
